@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Бронювання Фотостудії</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .calendar-header h2 {
+            color: #333;
+            font-size: 1.8em;
+        }
+
+        .nav-buttons button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 5px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .nav-buttons button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        .day-header {
+            text-align: center;
+            padding: 15px;
+            font-weight: bold;
+            color: #667eea;
+            background: #f0f3ff;
+            border-radius: 8px;
+        }
+
+        .day {
+            aspect-ratio: 1;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            position: relative;
+            padding: 10px;
+        }
+
+        .day:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+
+        .day.past {
+            background: #f5f5f5;
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        .day.past:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .day.has-bookings {
+            border-color: #ffc107;
+            background: #fff9e6;
+        }
+
+        .day.has-bookings::after {
+            content: '●';
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            color: #ffc107;
+            font-size: 1.2em;
+        }
+
+        .day-number {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .day.past .day-number {
+            color: #999;
+        }
+
+        .bookings-info {
+            font-size: 0.75em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .modal-header h3 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 5px;
+        }
+
+        .close-btn {
+            float: right;
+            font-size: 2em;
+            cursor: pointer;
+            color: #999;
+            line-height: 0.8;
+            transition: color 0.3s;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .hours-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        .hour-btn {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            font-size: 1em;
+            font-weight: 600;
+        }
+
+        .hour-btn:hover {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+
+        .hour-btn.booked {
+            background: #ffe0e0;
+            color: #999;
+            cursor: not-allowed;
+            border-color: #ffcccc;
+        }
+
+        .hour-btn.booked:hover {
+            transform: none;
+        }
+
+        .hour-btn.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .booking-form {
+            display: none;
+        }
+
+        .booking-form.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .bookings-list {
+            margin-top: 30px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .bookings-list h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .booking-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .booking-info {
+            flex: 1;
+        }
+
+        .booking-time {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .booking-client {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .delete-btn {
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .delete-btn:hover {
+            background: #cc0000;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #c62828;
+        }
+
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #2e7d32;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .legend-color.has-bookings {
+            background: #fff9e6;
+            border-color: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📸 Фотостудія</h1>
+            <p class="subtitle">Система бронювання часу</p>
+        </header>
+
+        <div class="main-content">
+            <div class="calendar-header">
+                <h2 id="currentMonth"></h2>
+                <div class="nav-buttons">
+                    <button onclick="previousMonth()">← Попередній</button>
+                    <button onclick="today()">Сьогодні</button>
+                    <button onclick="nextMonth()">Наступний →</button>
+                </div>
+            </div>
+
+            <div class="calendar" id="calendar"></div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color has-bookings"></div>
+                    <span>Є бронювання</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color"></div>
+                    <span>Вільний день</span>
+                </div>
+            </div>
+
+            <div class="bookings-list" id="todayBookings"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="bookingModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <div class="modal-header">
+                <h3 id="modalTitle"></h3>
+                <p id="modalDate"></p>
+            </div>
+
+            <div id="messageContainer"></div>
+
+            <div id="hoursSection">
+                <h4 style="margin-bottom: 15px; color: #333;">Оберіть вільну годину:</h4>
+                <div class="hours-grid" id="hoursGrid"></div>
+            </div>
+
+            <div class="booking-form" id="bookingForm">
+                <div class="form-group">
+                    <label for="clientName">Ім'я:</label>
+                    <input type="text" id="clientName" placeholder="Введіть ваше ім'я" required>
+                </div>
+                <div class="form-group">
+                    <label for="clientPhone">Номер телефону:</label>
+                    <input type="tel" id="clientPhone" placeholder="+380 XX XXX XX XX" required>
+                </div>
+                <button class="submit-btn" onclick="submitBooking()">Забронювати</button>
+            </div>
+
+            <div id="existingBookings"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentDate = new Date();
+        let selectedDate = null;
+        let selectedHour = null;
+
+        const monthNames = [
+            'Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
+            'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'
+        ];
+
+        const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
+
+        async function loadCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth() + 1;
+
+            document.getElementById('currentMonth').textContent = 
+                `${monthNames[month - 1]} ${year}`;
+
+            try {
+                const response = await fetch(`/api/calendar/${year}/${month}`);
+                const days = await response.json();
+
+                const calendar = document.getElementById('calendar');
+                calendar.innerHTML = '';
+
+                // Додати заголовки днів тижня
+                dayNames.forEach(day => {
+                    const header = document.createElement('div');
+                    header.className = 'day-header';
+                    header.textContent = day;
+                    calendar.appendChild(header);
+                });
+
+                // Додати порожні клітинки перед першим днем
+                const firstDay = new Date(year, month - 1, 1).getDay();
+                const offset = firstDay === 0 ? 6 : firstDay - 1;
+                
+                for (let i = 0; i < offset; i++) {
+                    calendar.appendChild(document.createElement('div'));
+                }
+
+                // Додати дні місяця
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                days.forEach(dayData => {
+                    const dayDate = new Date(dayData.date);
+                    const dayDiv = document.createElement('div');
+                    dayDiv.className = 'day';
+                    
+                    if (dayDate < today) {
+                        dayDiv.classList.add('past');
+                    }
+                    
+                    if (dayData.has_bookings) {
+                        dayDiv.classList.add('has-bookings');
+                    }
+
+                    dayDiv.innerHTML = `
+                        <div class="day-number">${dayDate.getDate()}</div>
+                        <div class="bookings-info">
+                            ${dayData.booked_hours.length > 0 ? 
+                                `${dayData.booked_hours.length} заброньовано` : 
+                                'Вільно'}
+                        </div>
+                    `;
+
+                    if (dayDate >= today) {
+                        dayDiv.onclick = () => openBookingModal(dayData);
+                    }
+
+                    calendar.appendChild(dayDiv);
+                });
+
+                loadTodayBookings();
+            } catch (error) {
+                console.error('Помилка завантаження календаря:', error);
+            }
+        }
+
+        async function openBookingModal(dayData) {
+            selectedDate = dayData.date;
+            selectedHour = null;
+
+            const date = new Date(dayData.date);
+            const dateStr = `${date.getDate()} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+
+            document.getElementById('modalTitle').textContent = 'Бронювання на';
+            document.getElementById('modalDate').textContent = dateStr;
+            document.getElementById('messageContainer').innerHTML = '';
+            document.getElementById('bookingForm').classList.remove('active');
+
+            const hoursGrid = document.getElementById('hoursGrid');
+            hoursGrid.innerHTML = '';
+
+            // Показати всі години
+            const allHours = Array.from({length: 12}, (_, i) => i + 9); // 9-20 годин
+            
+            allHours.forEach(hour => {
+                const hourBtn = document.createElement('button');
+                hourBtn.className = 'hour-btn';
+                hourBtn.textContent = `${hour}:00`;
+
+                if (dayData.booked_hours.includes(hour)) {
+                    hourBtn.classList.add('booked');
+                    hourBtn.disabled = true;
+                } else {
+                    hourBtn.onclick = () => selectHour(hour);
+                }
+
+                hoursGrid.appendChild(hourBtn);
+            });
+
+            // Завантажити існуючі бронювання
+            await loadDayBookings(dayData.date);
+
+            document.getElementById('bookingModal').classList.add('active');
+        }
+
+        function selectHour(hour) {
+            selectedHour = hour;
+
+            // Зняти виділення з усіх кнопок
+            document.querySelectorAll('.hour-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+
+            // Виділити обрану кнопку
+            event.target.classList.add('selected');
+
+            // Показати форму
+            document.getElementById('bookingForm').classList.add('active');
+        }
+
+        async function submitBooking() {
+            if (!selectedHour) {
+                showMessage('Будь ласка, оберіть годину', 'error');
+                return;
+            }
+
+            const name = document.getElementById('clientName').value.trim();
+            const phone = document.getElementById('clientPhone').value.trim();
+
+            if (!name || !phone) {
+                showMessage('Будь ласка, заповніть всі поля', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/bookings/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        phone: phone,
+                        booking_date: selectedDate,
+                        booking_hour: selectedHour
+                    })
+                });
+
+                if (response.ok) {
+                    showMessage('Бронювання успішно створено!', 'success');
+                    document.getElementById('clientName').value = '';
+                    document.getElementById('clientPhone').value = '';
+                    
+                    setTimeout(() => {
+                        closeModal();
+                        loadCalendar();
+                    }, 1500);
+                } else {
+                    const error = await response.json();
+                    showMessage(error.detail || 'Помилка при бронюванні', 'error');
+                }
+            } catch (error) {
+                showMessage('Помилка з\'єднання з сервером', 'error');
+                console.error('Помилка:', error);
+            }
+        }
+
+        async function loadDayBookings(date) {
+            try {
+                const response = await fetch(`/api/bookings/?start_date=${date}&end_date=${date}`);
+                const bookings = await response.json();
+
+                const container = document.getElementById('existingBookings');
+                
+                if (bookings.length > 0) {
+                    container.innerHTML = `
+                        <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #f0f0f0;">
+                            <h4 style="color: #667eea; margin-bottom: 15px;">Існуючі бронювання:</h4>
+                            ${bookings.map(booking => `
+                                <div class="booking-item">
+                                    <div class="booking-info">
+                                        <div class="booking-time">${booking.booking_hour}:00</div>
+                                        <div class="booking-client">
+                                            ${booking.client.name} - ${booking.client.phone}
+                                        </div>
+                                    </div>
+                                    <button class="delete-btn" onclick="deleteBooking(${booking.id})">
+                                        Видалити
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '';
+                }
+            } catch (error) {
+                console.error('Помилка завантаження бронювань:', error);
+            }
+        }
+
+        async function loadTodayBookings() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            try {
+                const response = await fetch(`/api/bookings/?start_date=${today}&end_date=${today}`);
+                const bookings = await response.json();
+
+                const container = document.getElementById('todayBookings');
+                
+                if (bookings.length > 0) {
+                    container.innerHTML = `
+                        <h3>Сьогоднішні бронювання (${bookings.length})</h3>
+                        ${bookings.map(booking => `
+                            <div class="booking-item">
+                                <div class="booking-info">
+                                    <div class="booking-time">${booking.booking_hour}:00</div>
+                                    <div class="booking-client">
+                                        ${booking.client.name} - ${booking.client.phone}
+                                    </div>
+                                </div>
+                                <button class="delete-btn" onclick="deleteBooking(${booking.id})">
+                                    Видалити
+                                </button>
+                            </div>
+                        `).join('')}
+                    `;
+                } else {
+                    container.innerHTML = '<h3>Сьогодні немає бронювань</h3>';
+                }
+            } catch (error) {
+                console.error('Помилка:', error);
+            }
+        }
+
+        async function deleteBooking(bookingId) {
+            if (!confirm('Ви впевнені, що хочете видалити це бронювання?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/bookings/${bookingId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    loadCalendar();
+                    if (selectedDate) {
+                        const dayResponse = await fetch(`/api/day/${selectedDate}`);
+                        const dayData = await dayResponse.json();
+                        await loadDayBookings(selectedDate);
+                        
+                        // Оновити сітку годин
+                        const hoursGrid = document.getElementById('hoursGrid');
+                        hoursGrid.innerHTML = '';
+                        const allHours = Array.from({length: 12}, (_, i) => i + 9);
+                        
+                        allHours.forEach(hour => {
+                            const hourBtn = document.createElement('button');
+                            hourBtn.className = 'hour-btn';
+                            hourBtn.textContent = `${hour}:00`;
+
+                            if (dayData.booked_hours.includes(hour)) {
+                                hourBtn.classList.add('booked');
+                                hourBtn.disabled = true;
+                            } else {
+                                hourBtn.onclick = () => selectHour(hour);
+                            }
+
+                            hoursGrid.appendChild(hourBtn);
+                        });
+                    }
+                    showMessage('Бронювання видалено', 'success');
+                } else {
+                    showMessage('Помилка при видаленні', 'error');
+                }
+            } catch (error) {
+                showMessage('Помилка з\'єднання', 'error');
+                console.error('Помилка:', error);
+            }
+        }
+
+        function showMessage(text, type) {
+            const container = document.getElementById('messageContainer');
+            container.innerHTML = `<div class="${type}">${text}</div>`;
+            
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 3000);
+        }
+
+        function closeModal() {
+            document.getElementById('bookingModal').classList.remove('active');
+            selectedDate = null;
+            selectedHour = null;
+        }
+
+        function previousMonth() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            loadCalendar();
+        }
+
+        function nextMonth() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            loadCalendar();
+        }
+
+        function today() {
+            currentDate = new Date();
+            loadCalendar();
+        }
+
+        // Закрити модальне вікно при кліку поза ним
+        window.onclick = function(event) {
+            const modal = document.getElementById('bookingModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // Завантажити календар при завантаженні сторінки
+        loadCalendar();
+    </script>
+</body>
+</html>

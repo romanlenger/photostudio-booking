@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "photostudio"
+version = "1"
+description = ""
+authors = ["romanlenger <145775490+romanlenger@users.noreply.github.com>"]
+license = "root"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.12.1"
+fastapi = "^0.121.0"
+
+[tool.poetry.group.dev.dependencies]
+fastapi = "^0.121.0"
+uvicorn = {extras = ["standard"], version = "^0.38.0"}
+sqlalchemy = "^2.0.44"
+psycopg2-binary = "^2.9.11"
+pydantic = "^2.12.4"
+python-dotenv = "^1.2.1"
+alembic = "^1.17.1"
+pytest = "^8.4.2"
+black = "^25.9.0"
+flake8 = "^7.3.0"
+mypy = "^1.18.2"
+httpx = "^0.28.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
