@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, validator
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, List
 
 class ClientBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
@@ -34,6 +34,8 @@ class BookingResponse(BaseModel):
     booking_hour: int
     created_at: datetime
     client: ClientResponse
+    telegram_link: Optional[str] = None
+    status: str = "pending"
     
     class Config:
         from_attributes = True
@@ -43,3 +45,26 @@ class DayStatusResponse(BaseModel):
     has_bookings: bool
     available_hours: list[int]
     booked_hours: list[int]
+
+# Admin schemas
+class LoginRequest(BaseModel):
+    password: str
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+class BookingDetailResponse(BaseModel):
+    """Детальна інформація про бронювання для адміна"""
+    hour: int
+    is_booked: bool
+    client_name: Optional[str] = None
+    client_phone: Optional[str] = None
+    booking_id: Optional[int] = None
+
+class AdminDayStatusResponse(BaseModel):
+    """Статус дня з деталями для адміна"""
+    date: date
+    has_bookings: bool
+    bookings: List[BookingDetailResponse]
+

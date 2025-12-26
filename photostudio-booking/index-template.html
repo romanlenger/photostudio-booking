@@ -1054,30 +1054,30 @@
             }
 
             try {
-                const response = await fetch('/api/bookings/', {
+                const response = await fetch('/api/bookings', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
+                        date: selectedDate,
+                        time: selectedHour,
                         name: name,
-                        phone: phone,
-                        booking_date: selectedDate,
-                        booking_hour: selectedHour
+                        phone: phone
                     })
                 });
 
                 const result = await response.json();
 
-                if (response.ok && result.telegram_link) {
+                if (result.success && result.telegram_link) {
                     showMessage('Переходимо в Telegram для підтвердження...', 'success');
                     
-                    // Redirect to Telegram after 1.5 seconds
+                    // Redirect to Telegram after 1 second
                     setTimeout(() => {
                         window.location.href = result.telegram_link;
-                    }, 1500);
+                    }, 1000);
                 } else {
-                    showMessage(result.detail || 'Помилка при бронюванні', 'error');
+                    showMessage(result.message || 'Помилка при бронюванні', 'error');
                 }
             } catch (error) {
                 showMessage('Помилка з\'єднання з сервером', 'error');

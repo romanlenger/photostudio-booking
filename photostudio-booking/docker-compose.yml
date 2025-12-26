@@ -3,35 +3,49 @@ version: '3.8'
 services:
   db:
     image: postgres:15-alpine
-    container_name: photostudio_db
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-photostudio}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-photostudio123}
-      POSTGRES_DB: ${POSTGRES_DB:-photostudio_db}
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U photostudio -d photostudio_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+    networks:
+      - photostudio_network
+    restart: unless-stopped
 
   web:
     build: .
-    container_name: photostudio_api
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
     volumes:
       - ./app:/app/app
       - ./static:/app/static
-    ports:
-      - "8000:8000"
-    environment:
-      DATABASE_URL: postgresql://photostudio:photostudio123@db:5432/photostudio_db
+    env_file:
+      - .env
     depends_on:
-      db:
-        condition: service_healthy
+      - db
+    networks:
+      - photostudio_network
+    restart: unless-stopped
+
+  bot:
+    build: .
+    command: python bot.py
+    volumes:
+      - ./bot.py:/app/bot.py
+      - ./app:/app/app
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - photostudio_network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+
+networks:
+  photostudio_network:
+    driver: bridge
