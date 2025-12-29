@@ -39,6 +39,13 @@ class Booking(Base):
     telegram_user_id = Column(BigInteger, nullable=True)
     confirmation_message_id = Column(BigInteger, nullable=True)
     
+    # NEW: Additional services
+    people_count = Column(Integer, nullable=True)  # Кількість людей
+    zone_choice = Column(String(20), nullable=True)  # light, dark, both
+    animals_count = Column(Integer, nullable=True)  # Кількість тварин
+    background_choice = Column(String(20), nullable=True)  # none, white, black, red
+    total_price = Column(Integer, nullable=True, default=1000)  # Загальна ціна
+    
     # Relationships
     client = relationship("Client", back_populates="bookings")
     

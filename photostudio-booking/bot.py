@@ -1,23 +1,17 @@
 """
-Telegram bot for photostudio booking confirmation
-Uses python-telegram-bot library (same as telegram_service)
+Telegram bot with additional services system
 """
 import os
-import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
-from sqlalchemy.orm import Session
 from datetime import datetime
-
-# Database imports
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.database import SessionLocal
 from app.models import Booking, Client
 
-
-# Bot setup
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+# Bot config
+BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
 if not BOT_TOKEN:
     try:
         with open("bot_token.txt", "r") as f:
@@ -25,401 +19,343 @@ if not BOT_TOKEN:
     except:
         raise ValueError("BOT_TOKEN not found!")
 
-# Admin IDs
-ADMIN_IDS_STR = os.getenv("TELEGRAM_ADMIN_CHAT_IDS", "")
+ADMIN_IDS_STR = os.getenv("ADMIN_IDS") or os.getenv("TELEGRAM_ADMIN_CHAT_IDS", "")
 ADMIN_IDS = [int(x.strip()) for x in ADMIN_IDS_STR.split(",") if x.strip()]
 
-# Studio rules
-STUDIO_RULES = os.getenv("STUDIO_RULES")
+STUDIO_RULES = os.getenv("STUDIO_RULES", """
+📋 Правила фотостудії CLIQUE:
 
-# Payment details
-PAYMENT_DETAILS = """💳 Реквізити для оплати:
+1. Приходьте вчасно
+2. До 4 осіб без доплат
+3. За пошкодження обладнання - відповідальність клієнта
+4. Заборонено курити
+5. 1 тварина без доплати
 
-Картка ПриватБанк: 5168 7574 1234 5678
-Отримувач: Кріпак Юлія Павлівна
-Сума: (тут бот має порахувати сам сумму, це для тебе CLaude) грн
-
-📸 Після оплати надішліть скріншот квитанції в цей чат.
-"""
-
-
+⚠️ При скасуванні <24 год - передоплата не повертається
+""")
 
 def get_db():
-    """Get database session"""
-    db = SessionLocal()
-    return db
+    return SessionLocal()
 
-
-async def notify_admins(context: ContextTypes.DEFAULT_TYPE, message: str):
-    """Send notification to all admins"""
+async def notify_admins(context, message):
     for admin_id in ADMIN_IDS:
         try:
             await context.bot.send_message(chat_id=admin_id, text=message, parse_mode='HTML')
-        except Exception as e:
-            print(f"Failed to notify admin {admin_id}: {e}")
+        except: pass
 
+def calculate_price(people, zone, animals, bg):
+    price = 1000
+    if people > 4: price += (people - 4) * 100
+    if zone == 'both': price += 500
+    if animals > 1: price += (animals - 1) * 100
+    if bg != 'none': price += 100
+    return price
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /start command"""
+def format_services(people, zone, animals, bg, price):
+    zones = {'light': 'Світла', 'dark': 'Темна', 'both': 'Обидві (+500₴)'}
+    bgs = {'none': 'Без фону', 'white': 'Білий (+100₴)', 'black': 'Чорний (+100₴)', 'red': 'Червоний (+100₴)'}
+    p_txt = f"До 4 осіб" if people <= 4 else f"{people} осіб (+{(people-4)*100}₴)"
+    a_txt = "Немає" if animals == 0 else (f"1 тварина" if animals == 1 else f"{animals} (+{(animals-1)*100}₴)")
+    return f"""📋 <b>Обрані послуги:</b>
+
+👥 Людей: {p_txt}
+📸 Зона: {zones.get(zone, zone)}
+🐾 Тварини: {a_txt}
+🎨 Фон: {bgs.get(bg, bg)}
+
+💰 <b>Сума: {price} грн</b>"""
+
+async def start(update, context):
     user_id = update.effective_user.id
-    
-    # Check if user is admin
     if user_id in ADMIN_IDS:
-        await update.message.reply_text(
-            "👋 Вітаю, адміне!\n\n"
-            "Ви будете отримувати сповіщення про всі бронювання.\n\n"
-            "Команди:\n"
-            "/start - це повідомлення\n"
-            "/help - довідка"
-        )
+        await update.message.reply_text("👋 Вітаю, адміне!")
         return
-    
-    # Check if this is booking confirmation
     if context.args and context.args[0].startswith("booking_"):
         booking_id = context.args[0].replace("booking_", "")
-        await handle_booking_confirmation(update, context, booking_id)
+        await handle_booking(update, context, booking_id)
     else:
-        await update.message.reply_text(
-            "👋 Вітаємо в фотостудії CLIQUE!\n\n"
-            "Для бронювання перейдіть на наш сайт:\n"
-            "🌐 http://192.168.88.26:8000"
-        )
+        await update.message.reply_text("👋 Вітаємо в CLIQUE!\n🌐 http://192.168.88.26:8000")
 
-
-async def handle_booking_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE, booking_id: str):
-    """Handle booking confirmation flow"""
+async def handle_booking(update, context, booking_id):
     user_id = update.effective_user.id
     username = update.effective_user.username or "без username"
-    
     db = get_db()
-    
     try:
-        # Get booking from database
         booking = db.query(Booking).filter(Booking.id == int(booking_id)).first()
-        
         if not booking:
-            await update.message.reply_text(
-                "❌ Бронювання не знайдено.\n\n"
-                "Можливо воно вже було скасоване або видалене."
-            )
+            await update.message.reply_text("❌ Бронювання не знайдено")
             return
-        
-        # Get client
         client = db.query(Client).filter(Client.id == booking.client_id).first()
-        
-        # Check if already confirmed
         if booking.status in ['confirmed', 'paid']:
-            await update.message.reply_text(
-                f"✅ Це бронювання вже підтверджено!\n\n"
-                f"📅 Дата: {booking.booking_date}\n"
-                f"🕐 Час: {booking.booking_hour}:00\n"
-                f"👤 Ім'я: {client.name}"
-            )
+            await update.message.reply_text(f"✅ Вже підтверджено!\n📅 {booking.booking_date.strftime('%d.%m.%Y')} {booking.booking_hour}:00")
             return
-        
-        # Update telegram_user_id
         booking.telegram_user_id = user_id
         db.commit()
         
-        # Send rules + confirmation buttons
         text = f"""{STUDIO_RULES}
 
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━
 
-📅 <b>Ваше бронювання:</b>
-
+📅 <b>Бронювання:</b>
 Дата: {booking.booking_date.strftime('%d.%m.%Y')}
 Час: {booking.booking_hour}:00
 Ім'я: {client.name}
 Телефон: {client.phone}
 
-━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━
 
-❓ Підтверджуєте бронювання?
-"""
+❓ Підтверджуєте?"""
         
-        keyboard = [
-            [
-                InlineKeyboardButton("✅ Підтвердити", callback_data=f"confirm_{booking_id}"),
-                InlineKeyboardButton("❌ Скасувати", callback_data=f"cancel_{booking_id}")
-            ]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        sent = await update.message.reply_text(text, reply_markup=reply_markup, parse_mode='HTML')
-        
-        # Save message_id
+        keyboard = [[
+            InlineKeyboardButton("✅ Так", callback_data=f"confirm_{booking_id}"),
+            InlineKeyboardButton("❌ Ні", callback_data=f"cancel_{booking_id}")
+        ]]
+        sent = await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
         booking.confirmation_message_id = sent.message_id
         db.commit()
         
-        # Notify admins
-        telegram_info = f"@{username}" if username != "без username" else f"ID: {user_id}"
-        
-        await notify_admins(
-            context,
-            f"📬 <b>Нове бронювання очікує підтвердження</b>\n\n"
-            f"ID бронювання: #{booking_id}\n"
-            f"👤 {client.name}\n"
-            f"📞 {client.phone}\n"
-            f"💬 Telegram: {telegram_info}\n"
-            f"📅 {booking.booking_date} о {booking.booking_hour}:00"
-        )
-    
+        tg_info = f"@{username}" if username != "без username" else f"ID: {user_id}"
+        await notify_admins(context, f"📬 <b>Нове бронювання</b>\n\nID: #{booking_id}\n👤 {client.name}\n📞 {client.phone}\n💬 {tg_info}\n📅 {booking.booking_date.strftime('%d.%m.%Y')} {booking.booking_hour}:00")
     finally:
         db.close()
 
-
-async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle button callbacks"""
+async def button_callback(update: Update, context):
     query = update.callback_query
     await query.answer()
+    data = query.data
+    if data.startswith("confirm_"):
+        await start_services(query, context, data.replace("confirm_", ""))
+    elif data.startswith("cancel_"):
+        await cancel_booking(query, context, data.replace("cancel_", ""))
+    elif data.startswith("people_"):
+        await handle_people(query, context)
+    elif data.startswith("zone_"):
+        await handle_zone(query, context)
+    elif data.startswith("animals_"):
+        await handle_animals(query, context)
+    elif data.startswith("bg_"):
+        await handle_bg(query, context)
+    elif data.startswith("copy_card_"):
+        # Показати номер картки для копіювання
+        card_number = "5168757412345678"
+        await query.answer(f"📋 Номер картки: {card_number}", show_alert=True)
+
+async def start_services(query, context, booking_id):
+    context.user_data['booking_id'] = booking_id
+    context.user_data['people'] = 4
+    context.user_data['zone'] = None
+    context.user_data['animals'] = 0
+    context.user_data['bg'] = None
     
     try:
-        action, booking_id = query.data.split("_", 1)
-        
-        if action == "confirm":
-            await confirm_booking(update, context, booking_id)
-        elif action == "cancel":
-            await cancel_booking(update, context, booking_id)
-        elif action == "pay":
-            await handle_online_payment(update, context, booking_id)
-    except Exception as e:
-        await query.answer(f"Помилка: {str(e)}", show_alert=True)
+        await query.edit_message_reply_markup(reply_markup=None)
+        await query.edit_message_text(query.message.text + "\n\n✅ <b>ПІДТВЕРДЖЕНО</b>", parse_mode='HTML')
+    except: pass
+    
+    keyboard = [[InlineKeyboardButton("👥 До 4", callback_data="people_up4")],
+                [InlineKeyboardButton("👥 Більше", callback_data="people_more")]]
+    await context.bot.send_message(query.message.chat_id, "<b>1/4: Кількість людей</b>\n\nДо 4 - без доплат\nБільше - 100₴/особа", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
 
+async def handle_people(query, context):
+    if query.data == "people_up4":
+        context.user_data['people'] = 4
+        await query.answer("✅ До 4 осіб")
+        await ask_zone(query, context)
+    else:
+        await query.edit_message_text("👥 Введіть кількість (5-20):", parse_mode='HTML')
+        context.user_data['waiting'] = 'people'
 
-async def confirm_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, booking_id: str):
-    """Confirm booking and send payment details"""
-    query = update.callback_query
+async def handle_text(update, context):
+    if 'waiting' not in context.user_data: return
+    waiting = context.user_data['waiting']
+    try:
+        num = int(update.message.text.strip())
+        if waiting == 'people':
+            if num < 5 or num > 20:
+                await update.message.reply_text("❌ Від 5 до 20")
+                return
+            context.user_data['people'] = num
+            await update.message.reply_text(f"✅ {num} осіб (+{(num-4)*100}₴)")
+            del context.user_data['waiting']
+            class FQ: 
+                def __init__(self, m): self.message = m
+            await ask_zone(FQ(update.message), context)
+        elif waiting == 'animals':
+            if num < 2 or num > 10:
+                await update.message.reply_text("❌ Від 2 до 10")
+                return
+            context.user_data['animals'] = num
+            await update.message.reply_text(f"✅ {num} тварини (+{(num-1)*100}₴)")
+            del context.user_data['waiting']
+            class FQ:
+                def __init__(self, m): self.message = m
+            await ask_bg(FQ(update.message), context)
+    except ValueError:
+        await update.message.reply_text("❌ Введіть число")
+
+async def ask_zone(query, context):
+    keyboard = [[InlineKeyboardButton("☀️ Світла", callback_data="zone_light")],
+                [InlineKeyboardButton("🌙 Темна", callback_data="zone_dark")],
+                [InlineKeyboardButton("✨ Обидві (+500₴)", callback_data="zone_both")]]
+    await context.bot.send_message(query.message.chat_id, "<b>2/4: Фотозона</b>\n\nОбидві - доплата 500₴", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
+
+async def handle_zone(query, context):
+    choice = query.data.replace("zone_", "")
+    context.user_data['zone'] = choice
+    names = {'light': 'Світла', 'dark': 'Темна', 'both': 'Обидві'}
+    await query.answer(f"✅ {names[choice]}")
+    await ask_animals(query, context)
+
+async def ask_animals(query, context):
+    keyboard = [[InlineKeyboardButton("🚫 Немає", callback_data="animals_none")],
+                [InlineKeyboardButton("🐾 1 тварина", callback_data="animals_one")],
+                [InlineKeyboardButton("🐾🐾 Більше", callback_data="animals_more")]]
+    await context.bot.send_message(query.message.chat_id, "<b>3/4: Тварини</b>\n\n1 - безкоштовно\nБільше - 100₴/тварина", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
+
+async def handle_animals(query, context):
+    if query.data == "animals_none":
+        context.user_data['animals'] = 0
+        await query.answer("✅ Без тварин")
+        await ask_bg(query, context)
+    elif query.data == "animals_one":
+        context.user_data['animals'] = 1
+        await query.answer("✅ 1 тварина")
+        await ask_bg(query, context)
+    else:
+        await query.edit_message_text("🐾 Введіть кількість (2-10):", parse_mode='HTML')
+        context.user_data['waiting'] = 'animals'
+
+async def ask_bg(query, context):
+    keyboard = [[InlineKeyboardButton("🚫 Без фону", callback_data="bg_none")],
+                [InlineKeyboardButton("⚪ Білий (+100₴)", callback_data="bg_white")],
+                [InlineKeyboardButton("⚫ Чорний (+100₴)", callback_data="bg_black")],
+                [InlineKeyboardButton("🔴 Червоний (+100₴)", callback_data="bg_red")]]
+    await context.bot.send_message(query.message.chat_id, "<b>4/4: Фон</b>\n\nБудь-який - 100₴", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
+
+async def handle_bg(query, context):
+    choice = query.data.replace("bg_", "")
+    context.user_data['bg'] = choice
+    await finalize(query, context)
+
+async def finalize(query, context):
+    bid = context.user_data.get('booking_id')
+    people = context.user_data.get('people', 4)
+    zone = context.user_data.get('zone', 'light')
+    animals = context.user_data.get('animals', 0)
+    bg = context.user_data.get('bg', 'none')
+    price = calculate_price(people, zone, animals, bg)
+    
     db = get_db()
-    
     try:
-        booking = db.query(Booking).filter(Booking.id == int(booking_id)).first()
-        
-        if not booking:
-            await query.answer("❌ Бронювання не знайдено", show_alert=True)
-            return
-        
+        booking = db.query(Booking).filter(Booking.id == int(bid)).first()
         client = db.query(Client).filter(Client.id == booking.client_id).first()
-        
-        # Update status to confirmed
         booking.status = "confirmed"
+        booking.people_count = people
+        booking.zone_choice = zone
+        booking.animals_count = animals
+        booking.background_choice = bg
+        booking.total_price = price
         db.commit()
         
-        # Edit original message
-        try:
-            await query.edit_message_reply_markup(reply_markup=None)
-            await query.edit_message_text(
-                query.message.text + "\n\n✅ <b>ПІДТВЕРДЖЕНО</b>",
-                parse_mode='HTML'
-            )
-        except:
-            pass
+        summary = format_services(people, zone, animals, bg, price)
         
-        # Send payment details
-        payment_text = PAYMENT_DETAILS.format(
-            date=booking.booking_date,
-            time=booking.booking_hour
-        )
+        card_number = "UA833052990000026002000123966"  # Без пробілів для копіювання
+        card_display = "UA833052990000026002000123966"  # З пробілами для читабельності
         
-        keyboard = [[InlineKeyboardButton("💰 Оплатити онлайн", callback_data=f"pay_{booking_id}")]]
+        payment = f"""✅ <b>Підтверджено!</b>
+
+{summary}
+
+━━━━━━━━━━━━━━━━
+
+💳 <b>Реквізити:</b>
+
+<code>{card_display}</code>
+ФОП Кріпак Юлія Павлівна
+
+<b>Сума: {price} грн</b>
+
+Призначення:
+Бронювання {booking.booking_date.strftime('%d.%m.%Y')} {booking.booking_hour}:00
+
+📸 Після оплати надішліть скріншот
+
+💡 Натисніть на номер рахунку щоб скопіювати"""
+        
+        # Додаємо кнопку для копіювання
+        keyboard = [[InlineKeyboardButton("📋 Скопіювати номер картки", callback_data=f"copy_card_{booking.id}")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
-        await context.bot.send_message(
-            chat_id=query.message.chat_id,
-            text=payment_text,
-            reply_markup=reply_markup,
-            parse_mode='HTML'
-        )
+        await context.bot.send_message(query.message.chat_id, payment, reply_markup=reply_markup, parse_mode='HTML')
         
-        await query.answer("✅ Бронювання підтверджено!")
-        
-        # Get telegram username
         username = query.from_user.username
-        telegram_info = f"@{username}" if username else f"ID: {query.from_user.id}"
-        
-        # Notify admins
-        await notify_admins(
-            context,
-            f"✅ <b>Бронювання підтверджено</b>\n\n"
-            f"ID бронювання: #{booking_id}\n"
-            f"👤 {client.name}\n"
-            f"📞 {client.phone}\n"
-            f"💬 Telegram: {telegram_info}\n"
-            f"📅 {booking.booking_date} о {booking.booking_hour}:00\n\n"
-            f"⏳ Очікуємо оплату..."
-        )
-    
+        tg = f"@{username}" if username else f"ID: {query.from_user.id}"
+        await notify_admins(context, f"✅ <b>Підтверджено</b>\n\nID: #{bid}\n👤 {client.name}\n📞 {client.phone}\n💬 {tg}\n📅 {booking.booking_date.strftime('%d.%m.%Y')} {booking.booking_hour}:00\n\n{summary}\n\n⏳ Чекаємо оплату...")
     finally:
         db.close()
 
-
-async def cancel_booking(update: Update, context: ContextTypes.DEFAULT_TYPE, booking_id: str):
-    """Cancel and delete booking"""
-    query = update.callback_query
+async def cancel_booking(query, context, bid):
     db = get_db()
-    
     try:
-        booking = db.query(Booking).filter(Booking.id == int(booking_id)).first()
-        
+        booking = db.query(Booking).filter(Booking.id == int(bid)).first()
         if not booking:
-            await query.answer("❌ Бронювання не знайдено", show_alert=True)
+            await query.answer("❌ Не знайдено")
             return
-        
         client = db.query(Client).filter(Client.id == booking.client_id).first()
-        
-        # Save info for notification
-        client_name = client.name
-        client_phone = client.phone
-        booking_date = booking.booking_date
-        booking_hour = booking.booking_hour
-        
-        # Get telegram username
-        username = query.from_user.username
-        telegram_info = f"@{username}" if username else f"ID: {query.from_user.id}"
-        
-        # Delete from database
+        name, phone = client.name, client.phone
+        date, hour = booking.booking_date, booking.booking_hour
         db.delete(booking)
         db.commit()
-        
-        # Edit message
         try:
             await query.edit_message_reply_markup(reply_markup=None)
-            await query.edit_message_text(
-                query.message.text + "\n\n❌ <b>СКАСОВАНО</b>",
-                parse_mode='HTML'
-            )
-        except:
-            pass
-        
-        await context.bot.send_message(
-            chat_id=query.message.chat_id,
-            text="❌ Бронювання скасовано.\n\n"
-                 "Якщо передумаєте - створіть нове бронювання на сайті."
-        )
-        
-        await query.answer("Бронювання скасовано")
-        
-        # Notify admins
-        await notify_admins(
-            context,
-            f"❌ <b>Бронювання скасовано клієнтом</b>\n\n"
-            f"ID бронювання: #{booking_id}\n"
-            f"👤 {client_name}\n"
-            f"📞 {client_phone}\n"
-            f"💬 Telegram: {telegram_info}\n"
-            f"📅 {booking_date} о {booking_hour}:00"
-        )
-    
+            await query.edit_message_text(query.message.text + "\n\n❌ <b>СКАСОВАНО</b>", parse_mode='HTML')
+        except: pass
+        await context.bot.send_message(query.message.chat_id, "❌ Скасовано")
+        username = query.from_user.username
+        tg = f"@{username}" if username else f"ID: {query.from_user.id}"
+        await notify_admins(context, f"❌ <b>Скасовано</b>\n\nID: #{bid}\n👤 {name}\n📞 {phone}\n💬 {tg}\n📅 {date.strftime('%d.%m.%Y')} {hour}:00")
     finally:
         db.close()
 
-
-async def handle_online_payment(update: Update, context: ContextTypes.DEFAULT_TYPE, booking_id: str):
-    """Handle online payment (placeholder)"""
-    query = update.callback_query
-    
-    await query.answer("💳 Онлайн оплата буде додана незабаром!", show_alert=True)
-    
-    await context.bot.send_message(
-        chat_id=query.message.chat_id,
-        text="💳 <b>Онлайн оплата</b>\n\n"
-             "Функція знаходиться в розробці.\n"
-             "Поки що використовуйте оплату за реквізитами вище.\n\n"
-             "Після оплати надішліть скріншот квитанції.",
-        parse_mode='HTML'
-    )
-
-
-async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle payment receipt photo"""
+async def handle_photo(update, context):
     user_id = update.effective_user.id
     db = get_db()
-    
     try:
-        # Find user's booking
-        booking = db.query(Booking).filter(
-            Booking.telegram_user_id == user_id,
-            Booking.status == 'confirmed'
-        ).first()
-        
+        booking = db.query(Booking).filter(Booking.telegram_user_id == user_id, Booking.status == 'confirmed').first()
         if booking:
             client = db.query(Client).filter(Client.id == booking.client_id).first()
-            
-            # Update status to paid
             booking.status = "paid"
             db.commit()
+            await update.message.reply_text("✅ Квитанцію отримано!\n\nОплата буде перевірена.")
             
-            await update.message.reply_text(
-                "✅ Дякуємо! Квитанцію отримано.\n\n"
-                "Оплата буде перевірена найближчим часом.\n"
-                "Ми зв'яжемось з вами для підтвердження."
-            )
+            services = ""
+            if booking.total_price and booking.total_price > 1000:
+                services = f"\n\n{format_services(booking.people_count or 4, booking.zone_choice or 'light', booking.animals_count or 0, booking.background_choice or 'none', booking.total_price)}"
             
-            # Forward to admins
             username = update.effective_user.username
-            telegram_info = f"@{username}" if username else f"ID: {user_id}"
-            
+            tg = f"@{username}" if username else f"ID: {user_id}"
             for admin_id in ADMIN_IDS:
                 try:
-                    await context.bot.forward_message(
-                        chat_id=admin_id,
-                        from_chat_id=update.message.chat_id,
-                        message_id=update.message.message_id
-                    )
-                    await context.bot.send_message(
-                        chat_id=admin_id,
-                        text=f"💰 <b>Отримано квитанцію про оплату</b>\n\n"
-                             f"ID бронювання: #{booking.id}\n"
-                             f"👤 {client.name}\n"
-                             f"📞 {client.phone}\n"
-                             f"💬 Telegram: {telegram_info}\n"
-                             f"📅 {booking.booking_date} о {booking.booking_hour}:00\n\n"
-                             f"❗️ Перевірте оплату!",
-                        parse_mode='HTML'
-                    )
-                except:
-                    pass
+                    await context.bot.forward_message(admin_id, update.message.chat_id, update.message.message_id)
+                    await context.bot.send_message(admin_id, f"💰 <b>Квитанція</b>\n\nID: #{booking.id}\n👤 {client.name}\n📞 {client.phone}\n💬 {tg}\n📅 {booking.booking_date.strftime('%d.%m.%Y')} {booking.booking_hour}:00{services}\n\n❗️ Перевірте!", parse_mode='HTML')
+                except: pass
         else:
-            await update.message.reply_text(
-                "ℹ️ Спочатку створіть бронювання на сайті."
-            )
-    
+            await update.message.reply_text("ℹ️ Спочатку створіть бронювання")
     finally:
         db.close()
 
-
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Help command"""
-    await update.message.reply_text(
-        "ℹ️ <b>Довідка</b>\n\n"
-        "Цей бот допомагає підтвердити бронювання фотостудії.\n\n"
-        "<b>Як працює:</b>\n"
-        "1. Створіть бронювання на сайті\n"
-        "2. Перейдіть в цей бот\n"
-        "3. Підтвердіть бронювання\n"
-        "4. Оплатіть за реквізитами\n"
-        "5. Надішліть квитанцію\n\n"
-        "🌐 Сайт: http://192.168.88.26:8000",
-        parse_mode='HTML'
-    )
-
+async def help_cmd(update, context):
+    await update.message.reply_text("ℹ️ <b>Довідка</b>\n\n1. Бронюйте на сайті\n2. Підтвердіть тут\n3. Оберіть послуги\n4. Оплатіть\n5. Надішліть квитанцію", parse_mode='HTML')
 
 def main():
-    """Run the bot"""
-    # Create application
-    application = Application.builder().token(BOT_TOKEN).build()
-    
-    # Add handlers
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CallbackQueryHandler(button_callback))
-    application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-    
-    # Run bot
-    print("🤖 Bot started!")
-    print(f"👥 Admin IDs: {ADMIN_IDS}")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
-
+    app = Application.builder().token(BOT_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_cmd))
+    app.add_handler(CallbackQueryHandler(button_callback))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    print(f"🤖 Bot started! Admins: {ADMIN_IDS}")
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
     main()
