@@ -261,6 +261,7 @@ async def finalize(query, context):
         
         card_number = "UA833052990000026002000123966"  # Без пробілів для копіювання
         card_display = "UA833052990000026002000123966"  # З пробілами для читабельності
+        purpose = f"Бронювання {booking.booking_date.strftime('%d.%m.%Y')} {booking.booking_hour}:00"
         
         payment = f"""✅ <b>Підтверджено!</b>
 
@@ -276,7 +277,7 @@ async def finalize(query, context):
 <b>Сума: {price} грн</b>
 
 Призначення:
-Бронювання {booking.booking_date.strftime('%d.%m.%Y')} {booking.booking_hour}:00
+<code>{purpose}</code>
 
 📸 Після оплати надішліть скріншот
 
