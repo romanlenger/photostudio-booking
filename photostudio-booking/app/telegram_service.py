@@ -17,7 +17,7 @@ class TelegramNotifier:
     """Клас для відправки Telegram сповіщень"""
     
     def __init__(self):
-        self.bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+        self.bot_token = os.getenv("BOT_TOKEN")
         self.admin_chat_ids = self._parse_chat_ids()
         self.bot = None
         
@@ -28,7 +28,7 @@ class TelegramNotifier:
             except Exception as e:
                 logger.error(f"❌ Помилка ініціалізації Telegram Bot: {e}")
         else:
-            logger.warning("⚠️ TELEGRAM_BOT_TOKEN не встановлено")
+            logger.warning("⚠️ BOT_TOKEN не встановлено")
     
     def _parse_chat_ids(self) -> list:
         """Парсити chat_id з змінної оточення"""
