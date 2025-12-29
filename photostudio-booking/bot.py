@@ -17,7 +17,7 @@ from app.models import Booking, Client
 
 
 # Bot setup
-BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     try:
         with open("bot_token.txt", "r") as f:
@@ -26,38 +26,14 @@ if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN not found!")
 
 # Admin IDs
-ADMIN_IDS_STR = os.getenv("ADMIN_IDS") or os.getenv("TELEGRAM_ADMIN_CHAT_IDS", "")
+ADMIN_IDS_STR = os.getenv("TELEGRAM_ADMIN_CHAT_IDS", "")
 ADMIN_IDS = [int(x.strip()) for x in ADMIN_IDS_STR.split(",") if x.strip()]
 
 # Studio rules
-STUDIO_RULES = os.getenv("STUDIO_RULES", """
-📋 Правила фотостудії CLIQUE:
-
-1. Приходьте вчасно - час бронювання фіксований
-2. Максимальна кількість людей - згідно з пакетом
-3. За пошкодження обладнання - відповідальність клієнта
-4. Заборонено курити в студії
-5. Домашні тварини - тільки після узгодження
-
-⚠️ При скасуванні менше ніж за 24 год - передоплата не повертається
-""")
+STUDIO_RULES = os.getenv("STUDIO_RULES")
 
 # Payment details
-PAYMENT_DETAILS = os.getenv("PAYMENT_DETAILS", """
-💳 Реквізити для оплати:
-
-Картка ПриватБанк:
-5168 7574 1234 5678
-
-Отримувач: Іван Петренко
-
-Сума: 500 грн
-
-Призначення платежу: 
-Бронювання фотостудії {date} {time}:00
-
-📸 Після оплати надішліть скріншот квитанції в цей чат.
-""")
+PAYMENT_DETAILS = os.getenv("PAYMENT_DETAILS")
 
 
 def get_db():
@@ -144,7 +120,7 @@ async def handle_booking_confirmation(update: Update, context: ContextTypes.DEFA
 
 📅 <b>Ваше бронювання:</b>
 
-Дата: {booking.booking_date}
+Дата: {booking.booking_date.strftime('%d.%m.%Y')}
 Час: {booking.booking_hour}:00
 Ім'я: {client.name}
 Телефон: {client.phone}
