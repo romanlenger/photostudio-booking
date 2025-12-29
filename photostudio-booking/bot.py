@@ -11,7 +11,7 @@ from app.database import SessionLocal
 from app.models import Booking, Client
 
 # Bot config
-BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     try:
         with open("bot_token.txt", "r") as f:
