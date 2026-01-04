@@ -22,17 +22,7 @@ if not BOT_TOKEN:
 ADMIN_IDS_STR = os.getenv("ADMIN_IDS") or os.getenv("TELEGRAM_ADMIN_CHAT_IDS", "")
 ADMIN_IDS = [int(x.strip()) for x in ADMIN_IDS_STR.split(",") if x.strip()]
 
-STUDIO_RULES = os.getenv("STUDIO_RULES", """
-📋 Правила фотостудії CLIQUE:
-
-1. Приходьте вчасно
-2. До 4 осіб без доплат
-3. За пошкодження обладнання - відповідальність клієнта
-4. Заборонено курити
-5. 1 тварина без доплати
-
-⚠️ При скасуванні <24 год - передоплата не повертається
-""")
+STUDIO_RULES = os.getenv("STUDIO_RULES")
 
 # Website and social media URLs
 WEBSITE_URL = os.getenv("WEBSITE_URL", "http://192.168.88.26:8000")
