@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Адмін - Фотостудія</title>
+    <title>Адмін - Фотостудія CLIQUE</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
         }
 
         html {
@@ -22,7 +21,6 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: transparent;
             min-height: 100vh;
-            padding: 0;
             overflow-x: hidden;
         }
 
@@ -33,22 +31,13 @@
             text-align: center;
             position: fixed;
             top: 0;
-            left: 50%;                    
+            left: 50%;
             transform: translateX(-50%);
-            width: calc(100% - 40px);    
-            max-width: 1200px;   
+            width: calc(100% - 40px);
+            max-width: 1200px;
             z-index: 1001;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-
-        h1 {
-            font-size: 1.8em;
-            margin-bottom: 8px;
-        }
-
-        .subtitle {
-            font-size: 0.95em;
-            opacity: 0.9;
+            border-radius: 0 0 0px 0px;
         }
 
         .admin-badge {
@@ -62,13 +51,10 @@
         }
 
         .calendar-header {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
             background: #f8f9fa;
             padding: 15px;
             position: fixed;
-            top: 147px;
+            top: 97px;
             left: 50%;
             transform: translateX(-50%);
             width: calc(100%);
@@ -79,7 +65,7 @@
 
         .container {
             max-width: 1200px;
-            margin-top: 202px;
+            margin-top: 177px;
             margin-left: auto;
             margin-right: auto;
             margin-bottom: 0;
@@ -88,66 +74,449 @@
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             overflow: hidden;
             position: relative;
-            min-height: calc(100vh - 185px);
+            min-height: calc(100vh - 177px);
             z-index: 1;
         }
 
-        .main-content {
-            padding: 15px;
+        .month-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
         }
 
-        /* Адаптив для планшетів */
+        .month-nav button {
+            padding: 10px 20px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .month-nav button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .day-header {
+            text-align: center;
+            font-weight: bold;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 8px;
+        }
+
+        .day {
+            aspect-ratio: 1;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 80px;
+        }
+
+        .day:hover:not(.past):not(.empty) {
+            border-color: #333;
+            transform: translateY(-3px);
+        }
+
+        .day.past {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .day.has-bookings {
+            background: #ffe5e5;
+            border-color: #ffcccc;
+        }
+
+        .day-number {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .bookings-info {
+            font-size: 0.7em;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .close-btn {
+            font-size: 28px;
+            cursor: pointer;
+            color: #aaa;
+        }
+
+        .close-btn:hover {
+            color: #000;
+        }
+
+        .hours-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .hour-item {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            transition: all 0.3s;
+        }
+
+        .hour-item.booked {
+            background: #ffebee;
+            border-color: #ffcdd2;
+            position: relative;
+        }
+
+        .hour-item.available {
+            cursor: pointer;
+            background: #e8f5e9;
+        }
+
+        .hour-item.available:hover {
+            border-color: #4CAF50;
+            transform: scale(1.02);
+        }
+
+        .hour-item.available.selected {
+            background: #c8e6c9;
+            border-color: #4CAF50;
+        }
+
+        .hour-time {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .hour-details {
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.75em;
+            margin: 2px;
+        }
+
+        .badge-group {
+            background: #2196F3;
+            color: white;
+        }
+
+        .badge-photographer {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .badge-discount {
+            background: #ff9800;
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        .badge-price {
+            background: #673AB7;
+            color: white;
+            font-weight: bold;
+        }
+
+        .badge-zone {
+            background: #00bcd4;
+            color: white;
+            font-weight: bold;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin: 5px 0;
+            width: 100%;
+            transition: all 0.3s;
+        }
+
+        .btn-edit {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-delete-group {
+            background: #d32f2f;
+            color: white;
+        }
+
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+            font-size: 1em;
+            padding: 12px;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        /* Form */
+        .booking-form {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .booking-form.active {
+            display: block;
+        }
+
+        .form-section {
+            margin-bottom: 20px;
+        }
+
+        .form-section h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .form-group select option:disabled {
+            color: #999;
+            background: #f5f5f5;
+        }
+
+        .form-group small {
+            display: block;
+            font-size: 0.85em;
+        }
+
+        .price-display {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .selected-hours-display {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .today-bookings {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .booking-item {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 8px 0;
+            border-left: 4px solid #4CAF50;
+        }
+
+        /* Login Modal */
+        .login-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .login-overlay.active {
+            display: flex;
+        }
+
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        .login-box h2 {
+            margin-bottom: 30px;
+            text-align: center;
+            color: #333;
+        }
+
+        .login-box input {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+        }
+
+        .login-box input:focus {
+            outline: none;
+            border-color: #333;
+        }
+
+        .login-box button {
+            width: 100%;
+            padding: 15px;
+            background: #333;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .login-box button:hover {
+            background: #000;
+        }
+
+        .login-error {
+            color: #f44336;
+            margin-bottom: 15px;
+            text-align: center;
+            display: none;
+        }
+
+        .login-error.active {
+            display: block;
+        }
+
+        /* Mobile Responsive Styles */
         @media screen and (max-width: 768px) {
+            * {
+                -webkit-tap-highlight-color: transparent;
+            }
+
             header {
                 padding: 15px;
-                width: calc(100% - 30px);
+                width: calc(100%);
             }
 
-            h1 {
-                font-size: 1.5em;
+            header h1 {
+                font-size: 1.6em;
             }
 
-            .subtitle {
-                font-size: 0.85em;
-            }
-
-            .admin-badge {
-                font-size: 0.7em;
-                padding: 5px 10px;
-            }
-
-            .calendar-header {
-                top: 130px;
-                width: calc(100% - 30px);
-                padding: 12px;
-                gap: 12px;
-            }
-
-            .container {
-                margin-top: 195px;
-                margin-left: 15px;
-                margin-right: 15px;
-            }
-
-            .main-content {
-                padding: 12px;
-            }
-        }
-
-        /* Адаптив для мобільних */
-        @media screen and (max-width: 480px) {
-            header {
-                padding: 12px;
-                width: calc(100% - 20px);
-            }
-
-            h1 {
-                font-size: 1.3em;
-                margin-bottom: 5px;
-            }
-
-            .subtitle {
-                font-size: 0.75em;
+            header p {
+                font-size: 0.9em;
             }
 
             .admin-badge {
@@ -155,681 +524,412 @@
                 padding: 4px 8px;
             }
 
+            header button {
+                font-size: 0.65em !important;
+                padding: 4px 8px !important;
+            }
+
             .calendar-header {
-                top: 95px;
-                width: calc(100% - 20px);
-                padding: 10px;
-                gap: 10px;
+                top: 82px;
+                padding: 12px;
+                width: calc(100%);
+            }
+
+            .month-nav h2 {
+                font-size: 1.2em;
+            }
+
+            .month-nav button {
+                padding: 8px 14px;
+                font-size: 0.9em;
             }
 
             .container {
-                margin-top: 185px;
-                margin-left: 10px;
-                margin-right: 10px;
+                margin-top: 147px;
                 border-radius: 0 0 15px 15px;
             }
 
             .main-content {
-                padding: 10px;
-            }
-        }
-
-        .calendar-header h2 {
-            color: #333;
-            font-size: 1.3em;
-            text-align: center;
-        }
-
-        .nav-buttons {
-            display: flex;
-            gap: 6px;
-            justify-content: center;
-        }
-
-        .nav-buttons button {
-            background: #333;
-            color: white;
-            border: none;
-            padding: 10px 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.85em;
-            transition: all 0.3s;
-            flex: 1;
-            max-width: 110px;
-        }
-
-        .nav-buttons button:active {
-            background: #000;
-            transform: scale(0.95);
-        }
-
-        .calendar {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 3px;
-            margin-bottom: 20px;
-        }
-
-        .day-header {
-            text-align: center;
-            padding: 6px 2px;
-            font-weight: bold;
-            color: #333;
-            background: #f0f0f0;
-            border-radius: 6px;
-            font-size: 0.7em;
-        }
-
-        .day {
-            aspect-ratio: 1;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: white;
-            position: relative;
-            padding: 2px;
-            min-height: 45px;
-        }
-
-        .day:active {
-            transform: scale(0.95);
-        }
-
-        .day.past {
-            background: #e8e8e8;
-            color: #999;
-            border-color: #d0d0d0;
-        }
-
-        .day.past-month {
-            visibility: hidden;
-        }
-
-        .day.has-bookings {
-            background: #333;
-            border-color: #333;
-            color: white;
-        }
-
-        .day.has-bookings .day-number {
-            color: white;
-        }
-
-        .day.has-bookings .bookings-info {
-            color: rgba(255, 255, 255, 0.9);
-        }
-
-        .day.has-bookings::after {
-            content: '●';
-            position: absolute;
-            top: 2px;
-            right: 3px;
-            color: white;
-            font-size: 0.7em;
-        }
-
-        .day.past.has-bookings {
-            background: #666;
-            border-color: #666;
-        }
-
-        .day-number {
-            font-size: 1em;
-            font-weight: bold;
-            color: #333;
-        }
-
-        .bookings-info {
-            font-size: 0.6em;
-            color: #666;
-            margin-top: 2px;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 2000;
-            align-items: flex-end;
-        }
-
-        .modal.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 25px 20px 30px;
-            border-radius: 20px 20px 0 0;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 -5px 30px rgba(0,0,0,0.3);
-            animation: slideUp 0.3s ease-out;
-        }
-
-        @keyframes slideUp {
-            from { transform: translateY(100%); }
-            to { transform: translateY(0); }
-        }
-
-        .modal-header {
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
-            position: relative;
-        }
-
-        .modal-header h3 {
-            color: #667eea;
-            font-size: 1.4em;
-            margin-bottom: 5px;
-            padding-right: 40px;
-        }
-
-        .close-btn {
-            position: absolute;
-            right: 0;
-            top: 0;
-            font-size: 2em;
-            cursor: pointer;
-            color: #999;
-            padding: 5px;
-        }
-
-        .close-btn:active {
-            color: #333;
-        }
-
-        .hours-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-
-        .hour-item {
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            background: white;
-        }
-
-        .hour-item.booked {
-            background: #ffe0e0;
-            border-color: #ffcccc;
-        }
-
-        .hour-item.available {
-            background: #e8f5e9;
-            border-color: #c8e6c9;
-            cursor: pointer;
-        }
-
-        .hour-item.available:active {
-            transform: scale(0.98);
-        }
-
-        .hour-item.selected {
-            background: #333;
-            color: white;
-            border-color: #333;
-        }
-
-        .hour-time {
-            font-weight: bold;
-            font-size: 1.1em;
-            margin-bottom: 5px;
-        }
-
-        .hour-details {
-            font-size: 0.9em;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .hour-item.booked .hour-details {
-            color: #c62828;
-        }
-
-        .hour-item.selected .hour-details {
-            color: white;
-        }
-
-        .delete-hour-btn {
-            background: #ff4444;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9em;
-            margin-top: 10px;
-            width: 100%;
-        }
-
-        .delete-hour-btn:active {
-            background: #cc0000;
-        }
-
-        .booking-form {
-            display: none;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid #f0f0f0;
-        }
-
-        .booking-form.active {
-            display: block;
-        }
-
-        .form-group {
-            margin-bottom: 18px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 600;
-            font-size: 1em;
-        }
-
-        input {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 1em;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .submit-btn {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #000000 0%, #333333 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.1em;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .submit-btn:active {
-            transform: scale(0.98);
-        }
-
-        .bookings-list {
-            margin-top: 25px;
-            background: #f8f9fa;
-            padding: 18px;
-            border-radius: 10px;
-        }
-
-        .bookings-list h3 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 1.2em;
-        }
-
-        .booking-item {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-
-        .booking-info {
-            margin-bottom: 10px;
-        }
-
-        .booking-time {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
-            font-size: 1.1em;
-        }
-
-        .booking-client {
-            color: #666;
-            font-size: 0.95em;
-        }
-
-        .delete-btn {
-            background: #ff4444;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9em;
-            width: 100%;
-        }
-
-        .delete-btn:active {
-            background: #cc0000;
-        }
-
-        .error {
-            background: #ffebee;
-            color: #c62828;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            border-left: 4px solid #c62828;
-            font-size: 0.95em;
-        }
-
-        .success {
-            background: #e8f5e9;
-            color: #2e7d32;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            border-left: 4px solid #2e7d32;
-            font-size: 0.95em;
-        }
-
-        .login-form {
-            text-align: center;
-        }
-
-        .login-form input {
-            margin-bottom: 20px;
-        }
-
-        .login-form button {
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #000000 0%, #333333 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.1em;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .login-form button:active {
-            transform: scale(0.98);
-        }
-
-        .lock-icon {
-            font-size: 3em;
-            margin-bottom: 20px;
-        }
-
-        /* Desktop styles */
-        @media (min-width: 768px) {
-            body {
-                padding: 20px;
-            }
-
-            header {
-                padding: 30px;
-            }
-
-            h1 {
-                font-size: 2.5em;
-                margin-bottom: 10px;
-            }
-
-            .subtitle {
-                font-size: 1.1em;
-            }
-
-            .admin-badge {
-                top: 20px;
-                right: 20px;
-                padding: 8px 15px;
-                font-size: 0.9em;
-            }
-
-            .main-content {
-                padding: 30px;
-            }
-
-            .calendar-header {
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: center;
-                padding: 20px;
-            }
-
-            .calendar-header h2 {
-                font-size: 1.8em;
-            }
-
-            .nav-buttons button {
-                padding: 10px 20px;
-                font-size: 1em;
-            }
-
-            .nav-buttons button:hover {
-                background: #000;
-                transform: translateY(-2px);
-                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+                padding: 15px;
             }
 
             .calendar {
-                gap: 10px;
-            }
-
-            .day-header {
-                padding: 15px;
-                font-size: 1em;
+                gap: 5px;
             }
 
             .day {
-                border-radius: 12px;
-                padding: 10px;
-                min-height: auto;
-            }
-
-            .day:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+                min-height: 60px;
+                padding: 6px;
             }
 
             .day-number {
-                font-size: 1.5em;
+                font-size: 1.1em;
             }
 
             .bookings-info {
-                font-size: 0.75em;
-                margin-top: 5px;
+                font-size: 0.65em;
             }
 
-            .modal {
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
+            .today-bookings {
+                padding: 12px;
+                margin-bottom: 12px;
+            }
+
+            .today-bookings h3 {
+                font-size: 1.1em;
+            }
+
+            .booking-item {
+                padding: 10px;
+                font-size: 0.9em;
             }
 
             .modal-content {
-                border-radius: 20px;
-                max-width: 650px;
-                width: 90%;
-                padding: 40px;
-                animation: none;
+                width: 95%;
+                padding: 20px;
+                max-height: 85vh;
             }
 
             .modal-header h3 {
+                font-size: 1.3em;
+            }
+
+            .hours-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+            }
+
+            .hour-item {
+                padding: 12px;
+                font-size: 0.9em;
+            }
+
+            .form-section h4 {
+                font-size: 1.1em;
+            }
+
+            .form-group label {
+                font-size: 0.9em;
+            }
+
+            .form-group select,
+            .form-group input {
+                padding: 12px;
+                font-size: 1em;
+            }
+
+            .btn {
+                padding: 12px;
+                font-size: 1em;
+            }
+
+            .price-display h3 {
+                font-size: 1.1em;
+            }
+
+            .price-display h2 {
                 font-size: 1.8em;
+            }
+
+            .login-box {
+                width: 95%;
+                padding: 30px;
+            }
+
+            .login-box h2 {
+                font-size: 1.5em;
+            }
+        }
+
+        @media screen and (max-width: 480px) {
+            header h1 {
+                font-size: 1.4em;
+            }
+
+            .calendar {
+                gap: 3px;
+            }
+
+            .day {
+                min-height: 50px;
+                padding: 4px;
+            }
+
+            .day-number {
+                font-size: 1em;
+            }
+
+            .bookings-info {
+                font-size: 0.6em;
+            }
+
+            .day-header {
+                padding: 8px;
+                font-size: 0.85em;
+            }
+
+            .month-nav button {
+                padding: 6px 10px;
+                font-size: 0.8em;
             }
 
             .hours-grid {
                 grid-template-columns: repeat(2, 1fr);
+                gap: 6px;
             }
 
-            .delete-btn {
-                width: auto;
-                padding: 8px 15px;
+            .hour-item {
+                padding: 10px;
+                font-size: 0.85em;
             }
 
-            .booking-item {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
+            .modal-content {
+                padding: 15px;
             }
 
-            .booking-info {
-                flex: 1;
-                margin-bottom: 0;
+            .form-group select,
+            .form-group input {
+                padding: 10px;
+                font-size: 0.95em;
+            }
+
+            .btn {
+                padding: 10px;
+                font-size: 0.95em;
+            }
+
+            .login-box {
+                padding: 25px;
+            }
+
+            .login-box h2 {
+                font-size: 1.3em;
+                margin-bottom: 20px;
+            }
+
+            .login-box input {
+                padding: 12px;
+                font-size: 0.95em;
+            }
+
+            .login-box button {
+                padding: 12px;
+                font-size: 1em;
             }
         }
 
-        /* Small phones */
-        @media (max-width: 360px) {
-            h1 {
-                font-size: 1.5em;
+        @media screen and (max-width: 360px) {
+            header h1 {
+                font-size: 1.2em;
             }
 
-            .calendar-header h2 {
-                font-size: 1.1em;
+            .calendar {
+                gap: 2px;
             }
 
-            .nav-buttons button {
-                padding: 8px 10px;
-                font-size: 0.8em;
-            }
-
-            .day-header {
-                font-size: 0.7em;
+            .day {
+                min-height: 45px;
+                padding: 3px;
             }
 
             .day-number {
                 font-size: 0.9em;
+            }
+
+            .bookings-info {
+                font-size: 0.55em;
+            }
+
+            .hours-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
+    <!-- Login Modal -->
+    <div class="login-overlay" id="loginOverlay">
+        <div class="login-box">
+            <h2>🔐 Вхід для Адміністратора</h2>
+            <div class="login-error" id="loginError">Неправильний пароль</div>
+            <input type="password" id="loginPassword" placeholder="Введіть пароль" onkeypress="if(event.key==='Enter') login()">
+            <button onclick="login()">Увійти</button>
+        </div>
+    </div>
+
     <header>
-        <div class="admin-badge">🔐 АДМІН</div>
-        <h1>CLIQUE</h1>
-        <p class="subtitle">Панель адміністратора</p>
+        <div class="admin-badge">👤 ADMIN</div>
+        <h1>CLIQUE - Адмін Панель</h1>
+        <p>Повне управління бронюваннями</p>
+        <button onclick="logout()" style="position: absolute; top: 10px; left: 10px; padding: 6px 12px; background: rgba(255,255,255,0.25); border: none; border-radius: 15px; color: white; cursor: pointer; font-size: 0.75em;">🚪 Вийти</button>
     </header>
 
-    <div class="calendar-header" id="calendarHeader" style="display: none;">
-        <h2 id="currentMonth"></h2>
-        <div class="nav-buttons">
-            <button id="prevBtn" onclick="previousMonth()">← Попер.</button>
-            <button onclick="today()">Сьогодні</button>
-            <button onclick="nextMonth()">Наст. →</button>
+    <div class="calendar-header">
+        <div class="month-nav">
+            <button id="prevBtn" onclick="previousMonth()">← Попередній</button>
+            <h2 id="currentMonth">Завантаження...</h2>
+            <button onclick="nextMonth()">Наступний →</button>
         </div>
     </div>
 
     <div class="container">
-        <div class="main-content" id="mainContent" style="display: none;">
-            <div class="calendar" id="calendar"></div>
-
-            <div class="bookings-list" id="todayBookings"></div>
+        <div class="calendar" id="calendar"></div>
+        
+        <div id="todayBookings" class="today-bookings" style="margin-top: 30px;">
+            <h3>Завантаження...</h3>
         </div>
     </div>
 
-    <div class="modal active" id="loginModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>🔐 Вхід адміна</h3>
-            </div>
-            <div id="loginMessage"></div>
-            <div class="login-form">
-                <div class="lock-icon">🔒</div>
-                <div class="form-group">
-                    <label for="adminPassword">Пароль:</label>
-                    <input type="password" id="adminPassword" placeholder="Введіть пароль" onkeypress="handleLoginKeyPress(event)">
-                </div>
-                <button onclick="login()">Увійти</button>
-            </div>
-        </div>
-    </div>
-
+    <!-- Modal для перегляду/створення/редагування -->
     <div class="modal" id="bookingModal">
         <div class="modal-content">
             <div class="modal-header">
-                <span class="close-btn" onclick="closeBookingModal()">&times;</span>
-                <h3 id="modalTitle">Управління</h3>
-                <p id="modalDate"></p>
+                <div>
+                    <h3 id="modalTitle">Управління</h3>
+                    <p id="modalDate"></p>
+                </div>
+                <span class="close-btn" onclick="closeModal()">&times;</span>
             </div>
 
             <div id="messageContainer"></div>
 
+            <!-- Відображення годин -->
             <div id="hoursSection">
-                <h4 style="margin-bottom: 15px; color: #333;">Години:</h4>
+                <h4>Години:</h4>
                 <div class="hours-grid" id="hoursGrid"></div>
             </div>
 
+            <!-- Форма створення/редагування -->
             <div class="booking-form" id="bookingForm">
-                <h4 style="margin-bottom: 15px; color: #333;">Нове бронювання:</h4>
-                <div class="form-group">
-                    <label for="clientName">Ім'я:</label>
-                    <input type="text" id="clientName" placeholder="Ім'я клієнта" required>
+                <h4 id="formTitle">Створити бронювання</h4>
+                
+                <div class="form-section">
+                    <h4>📅 Години</h4>
+                    <div class="selected-hours-display" id="selectedHoursDisplay">
+                        Оберіть години вище
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="clientPhone">Телефон:</label>
-                    <input type="tel" id="clientPhone" placeholder="+380 XX XXX XX XX" required>
+
+                <div class="form-section">
+                    <h4>👤 Контакти</h4>
+                    <div class="form-group">
+                        <label>Ім'я:</label>
+                        <input type="text" id="clientName" placeholder="Іван Петренко">
+                    </div>
+                    <div class="form-group">
+                        <label>Телефон:</label>
+                        <input type="tel" id="clientPhone" placeholder="+380123456789">
+                    </div>
                 </div>
-                <button class="submit-btn" onclick="submitBooking()">Забронювати</button>
+
+                <div class="form-section">
+                    <h4>📋 Послуги</h4>
+                    <div class="form-group">
+                        <label>👥 Кількість людей:</label>
+                        <select id="peopleCount" onchange="updatePrice()">
+                            <option value="1">1 особа</option>
+                            <option value="2">2 особи</option>
+                            <option value="3">3 особи</option>
+                            <option value="4" selected>4 особи (включено)</option>
+                            <option value="5">5 осіб (+100₴/год)</option>
+                            <option value="6">6 осіб (+200₴/год)</option>
+                            <option value="7">7 осіб (+300₴/год)</option>
+                            <option value="8">8 осіб (+400₴/год)</option>
+                            <option value="9">9 осіб (+500₴/год)</option>
+                            <option value="10">10 осіб (+600₴/год)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📸 Фотозона:</label>
+                        <select id="zoneChoice" onchange="handleZoneChange()">
+                            <option value="light" selected>☀️ Світла зона</option>
+                            <option value="dark">🌙 Темна зона</option>
+                            <option value="both">✨ Обидві зони (+500₴/год)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>🐾 Тварини:</label>
+                        <select id="animalsCount" onchange="updatePrice()">
+                            <option value="0" selected>Немає</option>
+                            <option value="1">1 тварина (включено)</option>
+                            <option value="2">2 тварини (+100₴/год)</option>
+                            <option value="3">3 тварини (+200₴/год)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>🎨 Фон:</label>
+                        <select id="backgroundChoice" onchange="updatePrice()">
+                            <option value="none" selected>Без фону</option>
+                            <option value="white" id="whiteOption">⚪ Білий (+100₴/год)</option>
+                            <option value="black">⚫ Чорний (+100₴/год)</option>
+                            <option value="red">🔴 Червоний (+100₴/год)</option>
+                        </select>
+                        <small id="backgroundHint" style="display: none; color: #f44336; margin-top: 5px;">
+                            ⚠️ Білий фон недоступний для темної зони
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>📷 Фотограф:</label>
+                        <select id="photographerChoice" onchange="updatePrice()">
+                            <option value="client" selected>🙋 Ваш фотограф</option>
+                            <option value="studio">👨‍💼 Наш фотограф (+2000₴/год)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="price-display">
+                    <h3>💰 Загальна ціна:</h3>
+                    <h2 id="totalPrice">0 грн</h2>
+                    <div id="discountBadge"></div>
+                </div>
+
+                <input type="hidden" id="editBookingGroupId">
+                
+                <button class="btn btn-primary" onclick="submitBooking()">
+                    💾 Зберегти бронювання
+                </button>
             </div>
         </div>
     </div>
 
     <script>
-        let currentDate = new Date();
-        let selectedDate = null;
-        let selectedHour = null;
         let authToken = localStorage.getItem('adminToken');
-
-        const monthNames = [
-            'Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
-            'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'
-        ];
-
-        const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
-
-        window.onload = function() {
-            if (authToken) {
-                showMainContent();
-            }
+        
+        // Check if user is authenticated
+        if (!authToken) {
+            showLoginModal();
+        } else {
+            // Verify token is still valid
+            verifyToken();
         }
 
-        function handleLoginKeyPress(event) {
-            if (event.key === 'Enter') {
-                login();
-            }
+        function showLoginModal() {
+            document.getElementById('loginOverlay').classList.add('active');
+            document.getElementById('loginPassword').focus();
+        }
+
+        function hideLoginModal() {
+            document.getElementById('loginOverlay').classList.remove('active');
         }
 
         async function login() {
-            const password = document.getElementById('adminPassword').value;
-
+            const password = document.getElementById('loginPassword').value.trim();
+            const errorDiv = document.getElementById('loginError');
+            
             if (!password) {
-                showLoginMessage('Введіть пароль', 'error');
+                errorDiv.textContent = 'Введіть пароль!';
+                errorDiv.classList.add('active');
                 return;
             }
 
             try {
                 const response = await fetch('/api/admin/login', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password: password })
                 });
 
@@ -838,33 +938,61 @@
                     authToken = data.access_token;
                     localStorage.setItem('adminToken', authToken);
                     
-                    document.getElementById('loginModal').classList.remove('active');
-                    showMainContent();
+                    errorDiv.classList.remove('active');
+                    hideLoginModal();
+                    
+                    // Load data
+                    loadCalendar();
+                    loadTodayBookings();
                 } else {
-                    const error = await response.json();
-                    showLoginMessage(error.detail || 'Неправильний пароль', 'error');
+                    errorDiv.textContent = 'Неправильний пароль!';
+                    errorDiv.classList.add('active');
+                    document.getElementById('loginPassword').value = '';
                 }
             } catch (error) {
-                showLoginMessage('Помилка з\'єднання', 'error');
-                console.error('Помилка:', error);
+                errorDiv.textContent = 'Помилка з\'єднання!';
+                errorDiv.classList.add('active');
             }
         }
 
-        function showLoginMessage(text, type) {
-            const container = document.getElementById('loginMessage');
-            container.innerHTML = `<div class="${type}">${text}</div>`;
-            
-            setTimeout(() => {
-                container.innerHTML = '';
-            }, 3000);
+        async function verifyToken() {
+            try {
+                // Try to make an authenticated request
+                const response = await fetch('/api/admin/bookings/list?start_date=' + new Date().toISOString().split('T')[0] + '&end_date=' + new Date().toISOString().split('T')[0], {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (!response.ok) {
+                    // Token is invalid
+                    localStorage.removeItem('adminToken');
+                    authToken = null;
+                    showLoginModal();
+                } else {
+                    // Token is valid, load data
+                    loadCalendar();
+                    loadTodayBookings();
+                }
+            } catch (error) {
+                console.error('Token verification error:', error);
+                showLoginModal();
+            }
         }
 
-        function showMainContent() {
-            document.getElementById('mainContent').style.display = 'block';
-            document.getElementById('calendarHeader').style.display = 'flex';
-            loadCalendar();
-            loadTodayBookings();
+        function logout() {
+            localStorage.removeItem('adminToken');
+            authToken = null;
+            showLoginModal();
         }
+
+        let currentDate = new Date();
+        let selectedDate = null;
+        let selectedHours = [];
+        let editMode = false;
+        let editBookingGroupId = null;
+
+        const monthNames = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
+                           'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
+        const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'];
 
         async function loadCalendar() {
             const year = currentDate.getFullYear();
@@ -873,20 +1001,9 @@
             document.getElementById('currentMonth').textContent = 
                 `${monthNames[month - 1]} ${year}`;
 
-            // Disable "Previous" button if we're at current month
             const today = new Date();
             const isCurrentMonth = (month - 1 === today.getMonth() && year === today.getFullYear());
-            const prevBtn = document.getElementById('prevBtn');
-            
-            if (isCurrentMonth) {
-                prevBtn.disabled = true;
-                prevBtn.style.opacity = '0.4';
-                prevBtn.style.cursor = 'not-allowed';
-            } else {
-                prevBtn.disabled = false;
-                prevBtn.style.opacity = '1';
-                prevBtn.style.cursor = 'pointer';
-            }
+            document.getElementById('prevBtn').disabled = isCurrentMonth;
 
             try {
                 const response = await fetch(`/api/calendar/${year}/${month}`);
@@ -905,29 +1022,21 @@
                 const firstDay = new Date(year, month - 1, 1).getDay();
                 const offset = firstDay === 0 ? 6 : firstDay - 1;
                 
-                // Don't show past month days - just empty divs
                 for (let i = 0; i < offset; i++) {
-                    const emptyDiv = document.createElement('div');
-                    emptyDiv.className = 'day past-month';
-                    calendar.appendChild(emptyDiv);
+                    const empty = document.createElement('div');
+                    empty.className = 'day empty';
+                    calendar.appendChild(empty);
                 }
 
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                
-                const currentMonth = today.getMonth();
-                const currentYear = today.getFullYear();
-                const isCurrentMonth = (month - 1 === currentMonth && year === currentYear);
+                const todayDate = new Date();
+                todayDate.setHours(0, 0, 0, 0);
 
                 days.forEach(dayData => {
                     const dayDate = new Date(dayData.date);
                     const dayDiv = document.createElement('div');
                     dayDiv.className = 'day';
                     
-                    const isPast = dayDate < today && isCurrentMonth;
-                    
-                    // Mark past days only in current month
-                    if (isPast) {
+                    if (dayDate < todayDate && isCurrentMonth) {
                         dayDiv.classList.add('past');
                     }
                     
@@ -935,21 +1044,15 @@
                         dayDiv.classList.add('has-bookings');
                     }
 
-                    // For past days - show only number
-                    if (isPast) {
-                        dayDiv.innerHTML = `<div class="day-number">${dayDate.getDate()}</div>`;
-                    } else {
-                        dayDiv.innerHTML = `
-                            <div class="day-number">${dayDate.getDate()}</div>
-                            <div class="bookings-info">
-                                ${dayData.booked_hours.length > 0 ? 
-                                    `${dayData.booked_hours.length} заб.` : 
-                                    'Вільно'}
-                            </div>
-                        `;
-                    }
+                    dayDiv.innerHTML = `
+                        <div class="day-number">${dayDate.getDate()}</div>
+                        <div class="bookings-info">
+                            ${dayData.booked_hours.length > 0 ? 
+                                `${dayData.booked_hours.length} заб.` : 'Вільно'}
+                        </div>
+                    `;
 
-                    dayDiv.onclick = () => openBookingModal(dayData);
+                    dayDiv.onclick = () => openModal(dayData);
                     calendar.appendChild(dayDiv);
                 });
             } catch (error) {
@@ -957,9 +1060,11 @@
             }
         }
 
-        async function openBookingModal(dayData) {
+        async function openModal(dayData) {
             selectedDate = dayData.date;
-            selectedHour = null;
+            selectedHours = [];
+            editMode = false;
+            editBookingGroupId = null;
 
             const date = new Date(dayData.date);
             const dateStr = `${date.getDate()} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
@@ -968,17 +1073,19 @@
             document.getElementById('modalDate').textContent = dateStr;
             document.getElementById('messageContainer').innerHTML = '';
             document.getElementById('bookingForm').classList.remove('active');
+            document.getElementById('formTitle').textContent = 'Створити бронювання';
+
+            // Очистити форму
+            clearForm();
 
             try {
                 const response = await fetch(`/api/admin/day/${dayData.date}`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 });
 
                 if (response.ok) {
                     const adminDayData = await response.json();
-                    displayAdminHours(adminDayData.bookings);
+                    displayHours(adminDayData.bookings);
                 }
             } catch (error) {
                 console.error('Помилка:', error);
@@ -987,51 +1094,233 @@
             document.getElementById('bookingModal').classList.add('active');
         }
 
-        function displayAdminHours(bookings) {
-            const hoursGrid = document.getElementById('hoursGrid');
-            hoursGrid.innerHTML = '';
+        function displayHours(bookings) {
+            const grid = document.getElementById('hoursGrid');
+            grid.innerHTML = '';
 
             bookings.forEach(booking => {
                 const hourDiv = document.createElement('div');
                 hourDiv.className = `hour-item ${booking.is_booked ? 'booked' : 'available'}`;
                 
                 if (booking.is_booked) {
+                    let badges = '';
+                    if (booking.booking_group_id && booking.hours_in_group > 1) {
+                        badges += `<span class="badge badge-group">📦 ${booking.hours_in_group} год</span>`;
+                    }
+                    if (booking.photographer_choice === 'studio') {
+                        badges += `<span class="badge badge-photographer">📷 Наш</span>`;
+                    }
+                    if (booking.has_discount) {
+                        badges += `<span class="badge badge-discount">🎉 -10%</span>`;
+                    }
+                    if (booking.total_price) {
+                        badges += `<span class="badge badge-price">💰 ${booking.total_price}₴</span>`;
+                    }
+
                     hourDiv.innerHTML = `
                         <div class="hour-time">${booking.hour}:00</div>
                         <div class="hour-details">
                             👤 ${booking.client_name}<br>
-                            📞 ${booking.client_phone}
+                            📞 ${booking.client_phone}<br>
+                            ${badges}
                         </div>
-                        <button class="delete-hour-btn" onclick="deleteBooking(${booking.booking_id})">
-                            🗑️ Видалити
+                        <button class="btn btn-edit" onclick="editBooking('${booking.booking_group_id || booking.booking_id}', ${booking.booking_id})">
+                            ✏️ Редагувати
                         </button>
+                        <button class="btn btn-delete" onclick="deleteBooking(${booking.booking_id})">
+                            🗑️ Видалити годину
+                        </button>
+                        ${booking.booking_group_id && booking.hours_in_group > 1 ? 
+                            `<button class="btn btn-delete-group" onclick="deleteGroup('${booking.booking_group_id}')">
+                                🗑️ Видалити групу (${booking.hours_in_group} год)
+                            </button>` : ''}
                     `;
                 } else {
                     hourDiv.innerHTML = `
                         <div class="hour-time">${booking.hour}:00</div>
                         <div class="hour-details" style="color: #2e7d32;">✓ Вільно</div>
                     `;
-                    hourDiv.onclick = () => selectHour(booking.hour, hourDiv);
+                    hourDiv.onclick = () => toggleHour(booking.hour);
                 }
 
-                hoursGrid.appendChild(hourDiv);
+                grid.appendChild(hourDiv);
             });
         }
 
-        function selectHour(hour, element) {
-            selectedHour = hour;
+        function toggleHour(hour) {
+            const index = selectedHours.indexOf(hour);
+            if (index > -1) {
+                selectedHours.splice(index, 1);
+            } else {
+                selectedHours.push(hour);
+            }
+            selectedHours.sort((a, b) => a - b);
+            
+            updateSelectedHoursDisplay();
+            updatePrice();
+            
+            if (selectedHours.length > 0) {
+                document.getElementById('bookingForm').classList.add('active');
+            }
+        }
 
+        function updateSelectedHoursDisplay() {
+            const display = document.getElementById('selectedHoursDisplay');
+            if (selectedHours.length === 0) {
+                display.textContent = 'Оберіть години вище';
+            } else {
+                display.textContent = formatHours(selectedHours);
+            }
+
+            // Оновити стилі кнопок
             document.querySelectorAll('.hour-item.available').forEach(item => {
-                item.classList.remove('selected');
+                const hour = parseInt(item.querySelector('.hour-time').textContent);
+                if (selectedHours.includes(hour)) {
+                    item.classList.add('selected');
+                } else {
+                    item.classList.remove('selected');
+                }
             });
+        }
 
-            element.classList.add('selected');
-            document.getElementById('bookingForm').classList.add('active');
+        function formatHours(hours) {
+            if (hours.length === 1) return `${hours[0]}:00`;
+            const isConsecutive = hours.every((h, i) => i === 0 || h === hours[i-1] + 1);
+            if (isConsecutive) {
+                return `${hours[0]}:00-${hours[hours.length-1] + 1}:00`;
+            }
+            return hours.map(h => `${h}:00`).join(', ');
+        }
+
+        function handleZoneChange() {
+            const zone = document.getElementById('zoneChoice').value;
+            const backgroundSelect = document.getElementById('backgroundChoice');
+            const whiteOption = document.getElementById('whiteOption');
+            const hint = document.getElementById('backgroundHint');
+            
+            if (zone === 'dark') {
+                // Темна зона - ховаємо білий фон повністю
+                whiteOption.style.display = 'none';
+                whiteOption.disabled = true;
+                
+                // Якщо зараз обрано білий - змінюємо на "без фону"
+                if (backgroundSelect.value === 'white') {
+                    backgroundSelect.value = 'none';
+                    hint.style.display = 'block';
+                    setTimeout(() => {
+                        hint.style.display = 'none';
+                    }, 3000);
+                }
+            } else {
+                // Світла зона або обидві - показуємо білий
+                whiteOption.style.display = '';
+                whiteOption.disabled = false;
+                hint.style.display = 'none';
+            }
+            
+            updatePrice();
+        }
+
+        function updatePrice() {
+            if (selectedHours.length === 0) return;
+
+            let basePrice = 1000;
+            const hours = selectedHours.length;
+
+            const people = parseInt(document.getElementById('peopleCount').value);
+            const peopleExtra = Math.max(0, people - 4) * 100;
+
+            const zone = document.getElementById('zoneChoice').value;
+            const zoneExtra = zone === 'both' ? 500 : 0;
+
+            const animals = parseInt(document.getElementById('animalsCount').value);
+            const animalsExtra = Math.max(0, animals - 1) * 100;
+
+            const bg = document.getElementById('backgroundChoice').value;
+            const bgExtra = bg !== 'none' ? 100 : 0;
+
+            const pricePerHour = basePrice + peopleExtra + zoneExtra + animalsExtra + bgExtra;
+            let totalForHours = pricePerHour * hours;
+
+            // Знижка 10%
+            let discount = 0;
+            if (hours >= 3) {
+                discount = Math.round(totalForHours * 0.1);
+                totalForHours -= discount;
+            }
+
+            const photographer = document.getElementById('photographerChoice').value;
+            const photographerExtra = photographer === 'studio' ? 2000 * hours : 0;
+
+            const totalPrice = totalForHours + photographerExtra;
+
+            document.getElementById('totalPrice').textContent = `${totalPrice} грн`;
+            
+            const discountBadge = document.getElementById('discountBadge');
+            if (discount > 0) {
+                discountBadge.innerHTML = `<span class="badge badge-discount">🎉 Знижка 10%: -${discount} грн</span>`;
+            } else {
+                discountBadge.innerHTML = '';
+            }
+        }
+
+        async function editBooking(groupIdOrBookingId, bookingId) {
+            try {
+                // Завантажити дані бронювання
+                const response = await fetch(`/api/admin/bookings/list?start_date=${selectedDate}&end_date=${selectedDate}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const bookings = await response.json();
+                
+                const booking = bookings.find(b => b.id === bookingId);
+                if (!booking) {
+                    showMessage('Бронювання не знайдено', 'error');
+                    return;
+                }
+
+                // Знайти всі години в групі
+                if (booking.booking_group_id) {
+                    const groupBookings = bookings.filter(b => b.booking_group_id === booking.booking_group_id);
+                    selectedHours = groupBookings.map(b => b.booking_hour).sort((a, b) => a - b);
+                    editBookingGroupId = booking.booking_group_id;
+                } else {
+                    selectedHours = [booking.booking_hour];
+                    editBookingGroupId = null;
+                }
+
+                // Заповнити форму
+                document.getElementById('clientName').value = booking.client.name;
+                document.getElementById('clientPhone').value = booking.client.phone;
+                document.getElementById('peopleCount').value = booking.people_count || 4;
+                document.getElementById('zoneChoice').value = booking.zone_choice || 'light';
+                document.getElementById('animalsCount').value = booking.animals_count || 0;
+                document.getElementById('backgroundChoice').value = booking.background_choice || 'none';
+                document.getElementById('photographerChoice').value = booking.photographer_choice || 'client';
+
+                editMode = true;
+                document.getElementById('formTitle').textContent = 'Редагувати бронювання';
+                document.getElementById('editBookingGroupId').value = editBookingGroupId || '';
+                
+                // Перевірити чи білий фон доступний для обраної зони
+                handleZoneChange();
+                
+                updateSelectedHoursDisplay();
+                document.getElementById('bookingForm').classList.add('active');
+                
+            } catch (error) {
+                showMessage('Помилка завантаження даних', 'error');
+                console.error(error);
+            }
         }
 
         async function submitBooking() {
-            if (!selectedHour) {
-                showMessage('Оберіть годину', 'error');
+            if (selectedHours.length === 0) {
+                showMessage('Оберіть години!', 'error');
+                return;
+            }
+            
+            if (!selectedDate) {
+                showMessage('Помилка: дата не обрана!', 'error');
                 return;
             }
 
@@ -1039,37 +1328,109 @@
             const phone = document.getElementById('clientPhone').value.trim();
 
             if (!name || !phone) {
-                showMessage('Заповніть всі поля', 'error');
+                showMessage('Заповніть ім\'я та телефон!', 'error');
                 return;
             }
 
+            // Отримати ціну і видалити текст "грн"
+            const totalPriceText = document.getElementById('totalPrice').textContent;
+            const totalPrice = parseInt(totalPriceText.replace(/[^\d]/g, '')) || 0;
+            
+            if (totalPrice === 0) {
+                showMessage('Помилка розрахунку ціни!', 'error');
+                return;
+            }
+
+            const bookingData = {
+                name: name,
+                phone: phone,
+                booking_date: selectedDate,
+                booking_hours: selectedHours,
+                people_count: parseInt(document.getElementById('peopleCount').value),
+                zone_choice: document.getElementById('zoneChoice').value,
+                animals_count: parseInt(document.getElementById('animalsCount').value),
+                background_choice: document.getElementById('backgroundChoice').value,
+                photographer_choice: document.getElementById('photographerChoice').value,
+                total_price: totalPrice
+            };
+            
+            console.log('Sending booking data:', bookingData);
+
             try {
+                if (editMode && editBookingGroupId) {
+                    // Редагування: видалити стару групу і створити нову
+                    await fetch(`/api/admin/bookings/group/${editBookingGroupId}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    });
+                }
+
                 const response = await fetch('/api/bookings/', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        name: name,
-                        phone: phone,
-                        booking_date: selectedDate,
-                        booking_hour: selectedHour
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bookingData)
                 });
 
                 if (response.ok) {
-                    showMessage('Бронювання створено!', 'success');
-                    document.getElementById('clientName').value = '';
-                    document.getElementById('clientPhone').value = '';
-                    
+                    showMessage(editMode ? 'Бронювання оновлено!' : 'Бронювання створено!', 'success');
                     setTimeout(() => {
-                        closeBookingModal();
+                        closeModal();
                         loadCalendar();
                         loadTodayBookings();
                     }, 1500);
                 } else {
                     const error = await response.json();
+                    console.error('Server error:', error);
                     showMessage(error.detail || 'Помилка', 'error');
+                }
+            } catch (error) {
+                console.error('Request error:', error);
+                showMessage('Помилка з\'єднання', 'error');
+            }
+        }
+
+        async function deleteBooking(bookingId) {
+            if (!confirm('Видалити цю годину?')) return;
+
+            try {
+                const response = await fetch(`/api/admin/bookings/${bookingId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    showMessage('Годину видалено!', 'success');
+                    setTimeout(() => {
+                        closeModal();
+                        loadCalendar();
+                        loadTodayBookings();
+                    }, 1000);
+                } else {
+                    showMessage('Помилка видалення', 'error');
+                }
+            } catch (error) {
+                showMessage('Помилка з\'єднання', 'error');
+            }
+        }
+
+        async function deleteGroup(groupId) {
+            if (!confirm('⚠️ Видалити ВСЮ ГРУПУ бронювань?')) return;
+
+            try {
+                const response = await fetch(`/api/admin/bookings/group/${groupId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    showMessage('Групу видалено!', 'success');
+                    setTimeout(() => {
+                        closeModal();
+                        loadCalendar();
+                        loadTodayBookings();
+                    }, 1000);
+                } else {
+                    showMessage('Помилка видалення', 'error');
                 }
             } catch (error) {
                 showMessage('Помилка з\'єднання', 'error');
@@ -1080,103 +1441,104 @@
             const today = new Date().toISOString().split('T')[0];
             
             try {
-                const response = await fetch(`/api/admin/bookings/?start_date=${today}&end_date=${today}`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
+                const response = await fetch(`/api/admin/bookings/list?start_date=${today}&end_date=${today}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 const bookings = await response.json();
 
                 const container = document.getElementById('todayBookings');
                 
                 if (bookings.length > 0) {
+                    const grouped = {};
+                    bookings.forEach(booking => {
+                        const groupId = booking.booking_group_id || `single_${booking.id}`;
+                        if (!grouped[groupId]) {
+                            grouped[groupId] = { ...booking, hours: [booking.booking_hour] };
+                        } else {
+                            grouped[groupId].hours.push(booking.booking_hour);
+                        }
+                    });
+                    
                     container.innerHTML = `
-                        <h3>Сьогодні (${bookings.length})</h3>
-                        ${bookings.map(booking => `
-                            <div class="booking-item">
-                                <div class="booking-info">
-                                    <div class="booking-time">${booking.booking_hour}:00</div>
-                                    <div class="booking-client">
-                                        ${booking.client.name}<br>
-                                        ${booking.client.phone}
+                        <h3>Сьогодні (${Object.keys(grouped).length} бронювань)</h3>
+                        ${Object.values(grouped).map(booking => {
+                            const hoursDisplay = booking.hours.length > 1 
+                                ? formatHours(booking.hours.sort((a,b) => a - b))
+                                : `${booking.booking_hour}:00`;
+                            
+                            let badges = '';
+                            
+                            // Зона
+                            const zoneIcons = {
+                                'light': '☀️ Світла',
+                                'dark': '🌙 Темна',
+                                'both': '✨ Обидві'
+                            };
+                            const zoneText = zoneIcons[booking.zone_choice] || '☀️ Світла';
+                            badges += `<span class="badge badge-zone">${zoneText}</span>`;
+                            
+                            // Фотограф
+                            if (booking.photographer_choice === 'studio') {
+                                badges += '<span class="badge badge-photographer">📷 Наш фотограф</span>';
+                            }
+                            
+                            // Знижка
+                            if (booking.hours.length >= 3) {
+                                badges += '<span class="badge badge-discount">🎉 -10%</span>';
+                            }
+                            
+                            return `
+                                <div class="booking-item">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <div style="font-size: 1.1em; font-weight: bold;">${hoursDisplay}</div>
+                                            <div>${booking.client.name}</div>
+                                            <div style="font-size: 0.9em; color: #666;">${booking.client.phone}</div>
+                                            <div style="margin-top: 5px;">${badges}</div>
+                                        </div>
                                     </div>
                                 </div>
-                                <button class="delete-btn" onclick="deleteBooking(${booking.id})">
-                                    🗑️ Видалити
-                                </button>
-                            </div>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     `;
                 } else {
-                    container.innerHTML = '<h3>Сьогодні немає бронювань</h3>';
+                    container.innerHTML = '<h3>Сьогодні</h3><p>Немає бронювань</p>';
                 }
             } catch (error) {
                 console.error('Помилка:', error);
             }
         }
 
-        async function deleteBooking(bookingId) {
-            if (!confirm('Видалити бронювання?')) {
-                return;
-            }
+        function clearForm() {
+            document.getElementById('clientName').value = '';
+            document.getElementById('clientPhone').value = '';
+            document.getElementById('peopleCount').value = '4';
+            document.getElementById('zoneChoice').value = 'light';
+            document.getElementById('animalsCount').value = '0';
+            document.getElementById('backgroundChoice').value = 'none';
+            document.getElementById('photographerChoice').value = 'client';
+            document.getElementById('totalPrice').textContent = '0 грн';
+            document.getElementById('discountBadge').innerHTML = '';
+            selectedHours = [];
+            editMode = false;
+            editBookingGroupId = null;
+        }
 
-            try {
-                const response = await fetch(`/api/bookings/${bookingId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-
-                if (response.ok) {
-                    showMessage('Видалено', 'success');
-                    loadCalendar();
-                    loadTodayBookings();
-                    
-                    if (selectedDate) {
-                        const response = await fetch(`/api/admin/day/${selectedDate}`, {
-                            headers: {
-                                'Authorization': `Bearer ${authToken}`
-                            }
-                        });
-                        if (response.ok) {
-                            const adminDayData = await response.json();
-                            displayAdminHours(adminDayData.bookings);
-                        }
-                    }
-                } else {
-                    showMessage('Помилка видалення', 'error');
-                }
-            } catch (error) {
-                showMessage('Помилка з\'єднання', 'error');
-            }
+        function closeModal() {
+            document.getElementById('bookingModal').classList.remove('active');
+            clearForm();
         }
 
         function showMessage(text, type) {
             const container = document.getElementById('messageContainer');
-            container.innerHTML = `<div class="${type}">${text}</div>`;
-            
-            setTimeout(() => {
-                container.innerHTML = '';
-            }, 3000);
-        }
-
-        function closeBookingModal() {
-            document.getElementById('bookingModal').classList.remove('active');
-            selectedDate = null;
-            selectedHour = null;
+            container.innerHTML = `<div class="message ${type}">${text}</div>`;
+            setTimeout(() => container.innerHTML = '', 3000);
         }
 
         function previousMonth() {
             const today = new Date();
-            const currentMonth = today.getMonth();
-            const currentYear = today.getFullYear();
-            
-            // Don't allow going before current month
-            if (currentDate.getMonth() === currentMonth && currentDate.getFullYear() === currentYear) {
-                return; // Block navigation to previous months
-            }
-            
+            if (currentDate.getMonth() === today.getMonth() && 
+                currentDate.getFullYear() === today.getFullYear()) return;
             currentDate.setMonth(currentDate.getMonth() - 1);
             loadCalendar();
         }
@@ -1186,17 +1548,18 @@
             loadCalendar();
         }
 
-        function today() {
-            currentDate = new Date();
-            loadCalendar();
-        }
-
         window.onclick = function(event) {
-            const modal = document.getElementById('bookingModal');
-            if (event.target === modal) {
-                closeBookingModal();
+            if (event.target === document.getElementById('bookingModal')) {
+                closeModal();
             }
         }
+
+        // Auto-refresh today's bookings every minute (only if authenticated)
+        setInterval(() => {
+            if (authToken) {
+                loadTodayBookings();
+            }
+        }, 60000);
     </script>
 </body>
 </html>

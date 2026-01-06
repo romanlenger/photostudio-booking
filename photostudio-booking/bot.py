@@ -1,16 +1,18 @@
 """
-Telegram bot with additional services system
+Simplified Telegram Bot v2.0
+All services selected on website - bot only confirms and receives payment
 """
 import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 from datetime import datetime
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.database import SessionLocal
 from app.models import Booking, Client
 
-# Bot config
+# ========== CONFIGURATION ==========
+
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     try:
@@ -22,203 +24,469 @@ if not BOT_TOKEN:
 ADMIN_IDS_STR = os.getenv("ADMIN_IDS") or os.getenv("TELEGRAM_ADMIN_CHAT_IDS", "")
 ADMIN_IDS = [int(x.strip()) for x in ADMIN_IDS_STR.split(",") if x.strip()]
 
-STUDIO_RULES = os.getenv("STUDIO_RULES")
+# NEW: Photographer ID for notifications when studio photographer is selected
+PHOTOGRAPHER_ID_STR = os.getenv("PHOTOGRAPHER_ID", "")
+PHOTOGRAPHER_ID = int(PHOTOGRAPHER_ID_STR) if PHOTOGRAPHER_ID_STR.strip() else None
 
-# Website and social media URLs
+STUDIO_RULES = os.getenv("STUDIO_RULES") or """📋 Правила фотостудії CLIQUE:
+
+1. Приходьте вчасно
+2. До 4 осіб без доплат
+3. За пошкодження обладнання - відповідальність клієнта
+4. Заборонено курити
+5. 1 тварина без доплати
+
+⚠️ При скасуванні <24 год - передоплата не повертається"""
+
 WEBSITE_URL = os.getenv("WEBSITE_URL", "http://192.168.88.26:8000")
 INSTAGRAM_URL = os.getenv("INSTAGRAM_URL", "https://instagram.com/clique_studio")
+
+# Payment details
+CARD_NUMBER = "UA833052990000026002000123966"
+CARD_DISPLAY = "UA833052990000026002000123966"
+CARDHOLDER_NAME = "Кріпак Юлія Павлівна"
+
+# ========== DATABASE ==========
 
 def get_db():
     return SessionLocal()
 
+# ========== KEYBOARDS ==========
+
 def get_main_keyboard():
-    """Постійна клавіатура з сайтом та Instagram (завжди)"""
+    """Main keyboard (always visible)"""
     keyboard = [
         [KeyboardButton("🌐 Перейти на сайт"), KeyboardButton("📸 Instagram")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 def get_cancel_keyboard():
-    """Клавіатура з кнопкою скасування + основні кнопки (під час бронювання)"""
+    """Keyboard with cancel button (during booking)"""
     keyboard = [
         [KeyboardButton("❌ Скасувати бронювання")],
         [KeyboardButton("🌐 Перейти на сайт"), KeyboardButton("📸 Instagram")]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-def remove_keyboard():
-    """Remove keyboard"""
-    return ReplyKeyboardRemove()
+# ========== HELPER FUNCTIONS ==========
 
 async def notify_admins(context, message):
+    """Send message to all admins"""
     for admin_id in ADMIN_IDS:
         try:
             await context.bot.send_message(chat_id=admin_id, text=message, parse_mode='HTML')
-        except: pass
+        except:
+            pass
 
-def calculate_price(people, zone, animals, bg):
-    price = 1000
-    if people > 4: price += (people - 4) * 100
-    if zone == 'both': price += 500
-    if animals > 1: price += (animals - 1) * 100
-    if bg != 'none': price += 100
-    return price
+async def notify_photographer(context, message):
+    """Send message to photographer (only if photographer_choice = 'studio')"""
+    if PHOTOGRAPHER_ID:
+        try:
+            await context.bot.send_message(chat_id=PHOTOGRAPHER_ID, text=message, parse_mode='HTML')
+        except:
+            pass
 
-def format_services(people, zone, animals, bg, price):
-    zones = {'light': 'Світла', 'dark': 'Темна', 'both': 'Обидві (+500₴)'}
-    bgs = {'none': 'Без фону', 'white': 'Білий (+100₴)', 'black': 'Чорний (+100₴)', 'red': 'Червоний (+100₴)'}
-    p_txt = f"До 4 осіб" if people <= 4 else f"{people} осіб (+{(people-4)*100}₴)"
-    a_txt = "Немає" if animals == 0 else (f"1 тварина" if animals == 1 else f"{animals} (+{(animals-1)*100}₴)")
-    return f"""📋 <b>Обрані послуги:</b>
+def format_hours_display(hours):
+    """
+    Format hours for display
+    [14, 15, 16] → "14:00-17:00"
+    [14, 17] → "14:00, 17:00"
+    """
+    if not hours:
+        return ""
+    if len(hours) == 1:
+        return f"{hours[0]}:00"
+    
+    hours = sorted(hours)
+    is_consecutive = all(hours[i] == hours[i-1] + 1 for i in range(1, len(hours)))
+    
+    if is_consecutive:
+        return f"{hours[0]}:00-{hours[-1] + 1}:00"
+    else:
+        return ", ".join(f"{h}:00" for h in hours)
 
-👥 Людей: {p_txt}
-📸 Зона: {zones.get(zone, zone)}
-🐾 Тварини: {a_txt}
-🎨 Фон: {bgs.get(bg, bg)}
+def format_services_summary(booking):
+    """Format services for display"""
+    zones = {'light': '☀️ Світла', 'dark': '🌙 Темна', 'both': '✨ Обидві'}
+    bgs = {'none': 'Без фону', 'white': '⚪ Білий', 'black': '⚫ Чорний', 'red': '🔴 Червоний'}
+    photographers = {'client': '🙋 Ваш фотограф', 'studio': '👨‍💼 Наш фотограф'}
+    
+    people_text = f"{booking.people_count} осіб" if booking.people_count <= 4 else f"{booking.people_count} осіб (+{(booking.people_count-4)*100}₴)"
+    animals_text = "Немає" if booking.animals_count == 0 else (f"{booking.animals_count}" if booking.animals_count == 1 else f"{booking.animals_count} (+{(booking.animals_count-1)*100}₴)")
+    
+    summary = f"""📋 <b>Обрані послуги:</b>
 
-💰 <b>Сума: {price} грн</b>"""
+👥 Людей: {people_text}
+📸 Зона: {zones.get(booking.zone_choice, booking.zone_choice)}
+🐾 Тварини: {animals_text}
+🎨 Фон: {bgs.get(booking.background_choice, booking.background_choice)}
+📷 Фотограф: {photographers.get(booking.photographer_choice, booking.photographer_choice)}
 
-async def start(update, context):
+💰 <b>Загальна сума: {booking.total_price} грн</b>"""
+    
+    return summary
+
+# ========== HANDLERS ==========
+
+async def start(update: Update, context):
+    """Handle /start command"""
     user_id = update.effective_user.id
+    
     if user_id in ADMIN_IDS:
         await update.message.reply_text("👋 Вітаю, адміне!")
         return
+    
+    # Check if it's a booking deep link
     if context.args and context.args[0].startswith("booking_"):
-        booking_id = context.args[0].replace("booking_", "")
-        await handle_booking(update, context, booking_id)
+        booking_id = int(context.args[0].replace("booking_", ""))
+        await handle_booking_confirmation(update, context, booking_id)
     else:
         await update.message.reply_text(
-            "👋 Вітаємо в CLIQUE!\n\n🌐 http://192.168.88.26:8000",
+            f"👋 Вітаємо в CLIQUE!\n\n🌐 Забронювати: {WEBSITE_URL}",
             reply_markup=get_main_keyboard()
         )
 
-async def handle_booking(update, context, booking_id):
-    user_id = update.effective_user.id
-    username = update.effective_user.username or "без username"
+async def handle_booking_confirmation(update: Update, context, first_booking_id):
+    """Show booking for confirmation - ALL SERVICES ALREADY SELECTED ON WEBSITE!"""
     db = get_db()
+    
     try:
-        booking = db.query(Booking).filter(Booking.id == int(booking_id)).first()
-        if not booking:
+        # Get first booking to find group
+        first_booking = db.query(Booking).filter(Booking.id == first_booking_id).first()
+        
+        if not first_booking:
             await update.message.reply_text("❌ Бронювання не знайдено")
             return
-        client = db.query(Client).filter(Client.id == booking.client_id).first()
-        if booking.status in ['confirmed', 'paid']:
-            await update.message.reply_text(f"✅ Вже підтверджено!\n📅 {booking.booking_date.strftime('%d.%m.%Y')} {booking.booking_hour}:00")
-            return
-        booking.telegram_user_id = user_id
+        
+        # Get all bookings in this group
+        group_id = first_booking.booking_group_id
+        
+        if group_id:
+            # Multiple hours booking
+            bookings = db.query(Booking).filter(
+                Booking.booking_group_id == group_id
+            ).order_by(Booking.booking_hour).all()
+        else:
+            # Single hour booking (backward compatibility)
+            bookings = [first_booking]
+        
+        # Get client info
+        client = db.query(Client).filter(Client.id == first_booking.client_id).first()
+        
+        # Collect all hours
+        hours = [b.booking_hour for b in bookings]
+        hours_display = format_hours_display(hours)
+        
+        # Format services summary (from website!)
+        services_summary = format_services_summary(first_booking)
+        
+        # Check if discount applied (3+ hours)
+        discount_info = ""
+        if len(hours) >= 3:
+            discount_info = "\n🎉 <b>Застосовано знижку 10%!</b>"
+        
+        # Build confirmation message
+        message = f"""{STUDIO_RULES}
+
+━━━━━━━━━━━━━━━━
+
+📅 <b>Ваше бронювання:</b>
+
+📆 Дата: {first_booking.booking_date.strftime('%d.%m.%Y')}
+🕐 Години: {hours_display} ({len(hours)} год)
+👤 Ім'я: {client.name}
+📞 Телефон: {client.phone}
+
+{services_summary}{discount_info}
+
+━━━━━━━━━━━━━━━━
+
+❓ Підтверджуєте бронювання?"""
+        
+        # Store user_id in ALL bookings of the group
+        for booking in bookings:
+            booking.telegram_user_id = update.effective_user.id
         db.commit()
         
-        text = f"""{STUDIO_RULES}
-
-━━━━━━━━━━━━━━━━
-
-📅 <b>Бронювання:</b>
-Дата: {booking.booking_date.strftime('%d.%m.%Y')}
-Час: {booking.booking_hour}:00
-Ім'я: {client.name}
-Телефон: {client.phone}
-
-━━━━━━━━━━━━━━━━
-
-❓ Підтверджуєте?"""
-        
+        # Confirmation buttons
         keyboard = [[
-            InlineKeyboardButton("✅ Так", callback_data=f"confirm_{booking_id}"),
-            InlineKeyboardButton("❌ Ні", callback_data=f"cancel_{booking_id}")
+            InlineKeyboardButton("✅ Так, підтверджую", callback_data=f"confirm_{first_booking_id}"),
+            InlineKeyboardButton("❌ Скасувати", callback_data=f"cancel_{first_booking_id}")
         ]]
         
-        # Додаємо постійну клавіатуру зі скасуванням
-        sent = await update.message.reply_text(
-            text, 
-            reply_markup=InlineKeyboardMarkup(keyboard), 
+        await update.message.reply_text(
+            message,
+            reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
         
-        # Відправляємо окреме повідомлення з постійною клавіатурою
-        await context.bot.send_message(
-            chat_id=update.message.chat_id,
-            text="💡 <b>Корисні кнопки з'явились внизу:</b>\n\n"
-                 "• ❌ Скасувати бронювання\n"
-                 "• 🌐 Перейти на сайт\n"
-                 "• 📸 Наш Instagram",
-            reply_markup=get_cancel_keyboard(),
-            parse_mode='HTML'
-        )
-        
-        booking.confirmation_message_id = sent.message_id
-        db.commit()
-        
-        tg_info = f"@{username}" if username != "без username" else f"ID: {user_id}"
-        await notify_admins(context, f"📬 <b>Нове бронювання</b>\n\nID: #{booking_id}\n👤 {client.name}\n📞 {client.phone}\n💬 {tg_info}\n📅 {booking.booking_date.strftime('%d.%m.%Y')} {booking.booking_hour}:00")
     finally:
         db.close()
 
 async def button_callback(update: Update, context):
+    """Handle button clicks"""
     query = update.callback_query
     await query.answer()
     data = query.data
+    
     if data.startswith("confirm_"):
-        await start_services(query, context, data.replace("confirm_", ""))
+        booking_id = int(data.replace("confirm_", ""))
+        await confirm_booking(query, context, booking_id)
+    
     elif data.startswith("cancel_"):
-        await cancel_booking(query, context, data.replace("cancel_", ""))
-    elif data.startswith("people_"):
-        await handle_people(query, context)
-    elif data.startswith("zone_"):
-        await handle_zone(query, context)
-    elif data.startswith("animals_"):
-        await handle_animals(query, context)
-    elif data.startswith("bg_"):
-        await handle_bg(query, context)
-    elif data.startswith("copy_card_"):
-        # Показати номер картки для копіювання
-        card_number = "5168757412345678"
-        await query.answer(f"📋 Номер картки: {card_number}", show_alert=True)
+        booking_id = int(data.replace("cancel_", ""))
+        await cancel_booking(query, context, booking_id)
+    
+    elif data.startswith("copy_card"):
+        await query.answer(f"📋 Номер картки: {CARD_NUMBER}", show_alert=True)
+    
     elif data.startswith("copy_purpose_"):
-        # Показати призначення платежу
+        # Extract booking info from callback data
         parts = data.split("_")
-        if len(parts) >= 5:
-            date_str = parts[3]  # YYYYMMDD
-            hour = parts[4]
-            # Форматуємо дату
-            from datetime import datetime
+        if len(parts) >= 4:
+            date_str = parts[2]
+            hours_str = parts[3]
+            
             date_obj = datetime.strptime(date_str, '%Y%m%d')
             formatted_date = date_obj.strftime('%d.%m.%Y')
-            purpose = f"Бронювання {formatted_date} {hour}:00"
+            
+            purpose = f"Бронювання {formatted_date} {hours_str}"
             await query.answer(f"📝 Призначення: {purpose}", show_alert=True)
 
-
-async def start_services(query, context, booking_id):
-    context.user_data['booking_id'] = booking_id
-    context.user_data['people'] = 4
-    context.user_data['zone'] = None
-    context.user_data['animals'] = 0
-    context.user_data['bg'] = None
+async def confirm_booking(query, context, first_booking_id):
+    """Confirm booking and show payment details"""
+    db = get_db()
     
     try:
-        await query.edit_message_reply_markup(reply_markup=None)
-        await query.edit_message_text(query.message.text + "\n\n✅ <b>ПІДТВЕРДЖЕНО</b>", parse_mode='HTML')
-    except: pass
+        # Get first booking
+        first_booking = db.query(Booking).filter(Booking.id == first_booking_id).first()
+        
+        if not first_booking:
+            await query.edit_message_text("❌ Бронювання не знайдено")
+            return
+        
+        # Get all bookings in group
+        group_id = first_booking.booking_group_id
+        
+        if group_id:
+            bookings = db.query(Booking).filter(
+                Booking.booking_group_id == group_id
+            ).all()
+        else:
+            bookings = [first_booking]
+        
+        # Update status to confirmed
+        for booking in bookings:
+            booking.status = 'confirmed'
+        db.commit()
+        
+        # Get client
+        client = db.query(Client).filter(Client.id == first_booking.client_id).first()
+        
+        # Collect hours
+        hours = sorted([b.booking_hour for b in bookings])
+        hours_display = format_hours_display(hours)
+        
+        # Format services
+        services_summary = format_services_summary(first_booking)
+        
+        # Check discount
+        discount_info = ""
+        if len(hours) >= 3:
+            discount_info = "\n🎉 <i>Знижка 10% вже застосована!</i>"
+        
+        # Payment purpose
+        purpose = f"Бронювання {first_booking.booking_date.strftime('%d.%m.%Y')} {hours_display}"
+        
+        # Photographer contact info
+        photographer_contact = ""
+        if first_booking.photographer_choice == 'studio':
+            photographer_contact = "\n\n💬 <b>Зв'язатись з фотографом для обговорення ідеї:</b> @lonkilin"
+        
+        # Payment message
+        payment_message = f"""✅ <b>Підтверджено!</b>
+
+{services_summary}{discount_info}
+
+━━━━━━━━━━━━━━━━
+
+💳 <b>Реквізити для оплати:</b>
+
+<code>{CARD_DISPLAY}</code>
+{CARDHOLDER_NAME}
+
+<b>Сума: {first_booking.total_price} грн</b>
+
+Призначення:
+<code>{purpose}</code>
+
+━━━━━━━━━━━━━━━━
+
+📸 <b>Після оплати надішліть скріншот квитанції в цей чат</b>
+
+💡 Натисніть на номер картки або призначення щоб скопіювати{photographer_contact}"""
+        
+        # Copy buttons
+        date_str = first_booking.booking_date.strftime('%Y%m%d')
+        keyboard = [
+            [InlineKeyboardButton("📋 Скопіювати картку", callback_data="copy_card")],
+            [InlineKeyboardButton("📝 Скопіювати призначення", callback_data=f"copy_purpose_{date_str}_{hours_display.replace(':', '')}")]
+        ]
+        
+        # Update original message
+        try:
+            await query.edit_message_reply_markup(reply_markup=None)
+            await query.edit_message_text(
+                query.message.text + "\n\n✅ <b>ПІДТВЕРДЖЕНО</b>",
+                parse_mode='HTML'
+            )
+        except:
+            pass
+        
+        # Send payment details
+        await context.bot.send_message(
+            chat_id=query.message.chat_id,
+            text=payment_message,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+        
+        # Show cancel keyboard
+        await context.bot.send_message(
+            chat_id=query.message.chat_id,
+            text="💡 Корисні кнопки з'явились внизу",
+            reply_markup=get_cancel_keyboard()
+        )
+        
+        # Notify admins
+        username = query.from_user.username
+        tg = f"@{username}" if username else f"ID: {query.from_user.id}"
+        
+        admin_message = f"""✅ <b>Нове підтверджене бронювання</b>
+
+ID: #{first_booking_id}
+👤 {client.name}
+📞 {client.phone}
+💬 {tg}
+
+📅 {first_booking.booking_date.strftime('%d.%m.%Y')}
+🕐 {hours_display} ({len(hours)} год)
+
+{services_summary}
+
+⏳ Чекаємо оплату..."""
+        
+        await notify_admins(context, admin_message)
+        
+        # NEW: Notify photographer if studio photographer selected
+        if first_booking.photographer_choice == 'studio':
+            photographer_message = f"""📸 <b>Нова фотосесія для вас!</b>
+
+📅 Дата: {first_booking.booking_date.strftime('%d.%m.%Y')}
+🕐 Час: {hours_display} ({len(hours)} год)
+
+👤 Клієнт: {client.name}
+📞 Телефон: {client.phone}
+
+📋 <b>Деталі:</b>
+{services_summary}
+
+⏳ Чекаємо оплату від клієнта...
+
+💡 Після оплати ви отримаєте фінальне підтвердження."""
+            
+            await notify_photographer(context, photographer_message)
+        
+    finally:
+        db.close()
+
+async def cancel_booking(query, context, first_booking_id):
+    """Cancel booking"""
+    db = get_db()
     
-    keyboard = [[InlineKeyboardButton("👥 До 4", callback_data="people_up4")],
-                [InlineKeyboardButton("👥 Більше", callback_data="people_more")]]
-    await context.bot.send_message(query.message.chat_id, "<b>1/4: Кількість людей</b>\n\nДо 4 - без доплат\nБільше - 100₴/особа", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
+    try:
+        # Get first booking
+        first_booking = db.query(Booking).filter(Booking.id == first_booking_id).first()
+        
+        if not first_booking:
+            await query.edit_message_text("❌ Бронювання не знайдено")
+            return
+        
+        # Get all bookings in group
+        group_id = first_booking.booking_group_id
+        
+        if group_id:
+            bookings = db.query(Booking).filter(
+                Booking.booking_group_id == group_id
+            ).all()
+        else:
+            bookings = [first_booking]
+        
+        # Get client
+        client = db.query(Client).filter(Client.id == first_booking.client_id).first()
+        
+        # Collect info before deletion
+        hours = sorted([b.booking_hour for b in bookings])
+        hours_display = format_hours_display(hours)
+        date = first_booking.booking_date
+        
+        # Delete all bookings
+        for booking in bookings:
+            db.delete(booking)
+        db.commit()
+        
+        # Update message
+        try:
+            await query.edit_message_reply_markup(reply_markup=None)
+            await query.edit_message_text(
+                query.message.text + "\n\n❌ <b>СКАСОВАНО</b>",
+                parse_mode='HTML'
+            )
+        except:
+            pass
+        
+        await context.bot.send_message(
+            chat_id=query.message.chat_id,
+            text=f"""❌ <b>Бронювання скасовано</b>
 
-async def handle_people(query, context):
-    if query.data == "people_up4":
-        context.user_data['people'] = 4
-        await query.answer("✅ До 4 осіб")
-        await ask_zone(query, context)
-    else:
-        await query.edit_message_text("👥 Введіть кількість (5-20):", parse_mode='HTML')
-        context.user_data['waiting'] = 'people'
+📅 {date.strftime('%d.%m.%Y')}
+🕐 {hours_display}
 
-async def handle_text(update, context):
+Якщо передумаєте - створіть нове бронювання на сайті:
+{WEBSITE_URL}""",
+            reply_markup=get_main_keyboard(),
+            parse_mode='HTML'
+        )
+        
+        # Notify admins
+        username = query.from_user.username
+        tg = f"@{username}" if username else f"ID: {query.from_user.id}"
+        
+        await notify_admins(
+            context,
+            f"""❌ <b>Бронювання скасовано клієнтом</b>
+
+ID: #{first_booking_id}
+👤 {client.name}
+📞 {client.phone}
+💬 {tg}
+
+📅 {date.strftime('%d.%m.%Y')}
+🕐 {hours_display}"""
+        )
+        
+    finally:
+        db.close()
+
+async def handle_text(update: Update, context):
+    """Handle text messages (menu buttons)"""
     text = update.message.text.strip()
     
-    # Перевірка на кнопки меню
+    # Menu buttons
     if text == "❌ Скасувати бронювання":
         await handle_cancel_button(update, context)
         return
+    
     elif text == "🌐 Перейти на сайт":
         await update.message.reply_text(
             f"🌐 <b>Сайт фотостудії CLIQUE</b>\n\n"
@@ -230,6 +498,7 @@ async def handle_text(update, context):
             parse_mode='HTML'
         )
         return
+    
     elif text == "📸 Instagram":
         await update.message.reply_text(
             f"📸 <b>Наш Instagram</b>\n\n"
@@ -241,295 +510,220 @@ async def handle_text(update, context):
             parse_mode='HTML'
         )
         return
-    
-    if 'waiting' not in context.user_data: return
-    waiting = context.user_data['waiting']
-    try:
-        num = int(text)
-        if waiting == 'people':
-            if num < 5 or num > 20:
-                await update.message.reply_text("❌ Від 5 до 20")
-                return
-            context.user_data['people'] = num
-            await update.message.reply_text(f"✅ {num} осіб (+{(num-4)*100}₴)")
-            del context.user_data['waiting']
-            class FQ: 
-                def __init__(self, m): self.message = m
-            await ask_zone(FQ(update.message), context)
-        elif waiting == 'animals':
-            if num < 2 or num > 10:
-                await update.message.reply_text("❌ Від 2 до 10")
-                return
-            context.user_data['animals'] = num
-            await update.message.reply_text(f"✅ {num} тварини (+{(num-1)*100}₴)")
-            del context.user_data['waiting']
-            class FQ:
-                def __init__(self, m): self.message = m
-            await ask_bg(FQ(update.message), context)
-    except ValueError:
-        await update.message.reply_text("❌ Введіть число")
 
-async def ask_zone(query, context):
-    keyboard = [[InlineKeyboardButton("☀️ Світла", callback_data="zone_light")],
-                [InlineKeyboardButton("🌙 Темна", callback_data="zone_dark")],
-                [InlineKeyboardButton("✨ Обидві (+500₴)", callback_data="zone_both")]]
-    await context.bot.send_message(query.message.chat_id, "<b>2/4: Фотозона</b>\n\nОбидві - доплата 500₴", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
-
-async def handle_zone(query, context):
-    choice = query.data.replace("zone_", "")
-    context.user_data['zone'] = choice
-    names = {'light': 'Світла', 'dark': 'Темна', 'both': 'Обидві'}
-    await query.answer(f"✅ {names[choice]}")
-    await ask_animals(query, context)
-
-async def ask_animals(query, context):
-    keyboard = [[InlineKeyboardButton("🚫 Немає", callback_data="animals_none")],
-                [InlineKeyboardButton("🐾 1 тварина", callback_data="animals_one")],
-                [InlineKeyboardButton("🐾🐾 Більше", callback_data="animals_more")]]
-    await context.bot.send_message(query.message.chat_id, "<b>3/4: Тварини</b>\n\n1 - безкоштовно\nБільше - 100₴/тварина", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
-
-async def handle_animals(query, context):
-    if query.data == "animals_none":
-        context.user_data['animals'] = 0
-        await query.answer("✅ Без тварин")
-        await ask_bg(query, context)
-    elif query.data == "animals_one":
-        context.user_data['animals'] = 1
-        await query.answer("✅ 1 тварина")
-        await ask_bg(query, context)
-    else:
-        await query.edit_message_text("🐾 Введіть кількість (2-10):", parse_mode='HTML')
-        context.user_data['waiting'] = 'animals'
-
-async def ask_bg(query, context):
-    keyboard = [[InlineKeyboardButton("🚫 Без фону", callback_data="bg_none")],
-                [InlineKeyboardButton("⚪ Білий (+100₴)", callback_data="bg_white")],
-                [InlineKeyboardButton("⚫ Чорний (+100₴)", callback_data="bg_black")],
-                [InlineKeyboardButton("🔴 Червоний (+100₴)", callback_data="bg_red")]]
-    await context.bot.send_message(query.message.chat_id, "<b>4/4: Фон</b>\n\nБудь-який - 100₴", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='HTML')
-
-async def handle_bg(query, context):
-    choice = query.data.replace("bg_", "")
-    context.user_data['bg'] = choice
-    await finalize(query, context)
-
-async def finalize(query, context):
-    bid = context.user_data.get('booking_id')
-    people = context.user_data.get('people', 4)
-    zone = context.user_data.get('zone', 'light')
-    animals = context.user_data.get('animals', 0)
-    bg = context.user_data.get('bg', 'none')
-    price = calculate_price(people, zone, animals, bg)
-    
-    db = get_db()
-    try:
-        booking = db.query(Booking).filter(Booking.id == int(bid)).first()
-        client = db.query(Client).filter(Client.id == booking.client_id).first()
-        booking.status = "confirmed"
-        booking.people_count = people
-        booking.zone_choice = zone
-        booking.animals_count = animals
-        booking.background_choice = bg
-        booking.total_price = price
-        db.commit()
-        
-        summary = format_services(people, zone, animals, bg, price)
-        
-        card_number = "UA833052990000026002000123966"  # Без пробілів для копіювання
-        card_display = "UA833052990000026002000123966"  # З пробілами для читабельності
-        purpose = f"Бронювання {booking.booking_date.strftime('%d.%m.%Y')} {booking.booking_hour}:00"
-        
-        payment = f"""✅ <b>Підтверджено!</b>
-
-{summary}
-
-━━━━━━━━━━━━━━━━
-
-💳 <b>Реквізити:</b>
-
-<code>{card_display}</code>
-ФОП Кріпак Юлія Павлівна
-
-<b>Сума: {price} грн</b>
-
-Призначення:
-<code>{purpose}</code>
-
-📸 Після оплати надішліть скріншот
-
-💡 Натисніть на номер картки або призначення щоб скопіювати"""
-        
-        # Додаємо кнопки для копіювання
-        keyboard = [
-            [InlineKeyboardButton("📋 Скопіювати картку", callback_data=f"copy_card_{booking.id}")],
-            [InlineKeyboardButton("📝 Скопіювати призначення", callback_data=f"copy_purpose_{booking.id}_{booking.booking_date.strftime('%Y%m%d')}_{booking.booking_hour}")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await context.bot.send_message(query.message.chat_id, payment, reply_markup=reply_markup, parse_mode='HTML')
-        
-        # Нагадати про кнопки внизу
-        await context.bot.send_message(
-            query.message.chat_id,
-            "💡 Корисні кнопки внизу:\n"
-            "• ❌ Скасувати (якщо передумали)\n"
-            "• 🌐 Сайт • 📸 Instagram"
-        )
-        
-        username = query.from_user.username
-        tg = f"@{username}" if username else f"ID: {query.from_user.id}"
-        await notify_admins(context, f"✅ <b>Підтверджено</b>\n\nID: #{bid}\n👤 {client.name}\n📞 {client.phone}\n💬 {tg}\n📅 {booking.booking_date.strftime('%d.%m.%Y')} {booking.booking_hour}:00\n\n{summary}\n\n⏳ Чекаємо оплату...")
-    finally:
-        db.close()
-
-async def handle_cancel_button(update, context):
-    """Handle cancel button from persistent keyboard"""
+async def handle_cancel_button(update: Update, context):
+    """Handle cancel booking button"""
     user_id = update.effective_user.id
     db = get_db()
     
     try:
-        # Знайти активне бронювання користувача
-        booking = db.query(Booking).filter(
+        # Find active bookings for this user
+        bookings = db.query(Booking).filter(
             Booking.telegram_user_id == user_id,
             Booking.status.in_(['pending', 'confirmed'])
-        ).first()
+        ).all()
         
-        if not booking:
+        if not bookings:
             await update.message.reply_text(
                 "ℹ️ У вас немає активних бронювань для скасування.",
                 reply_markup=get_main_keyboard()
             )
             return
         
-        # Отримати інфо про клієнта
-        client = db.query(Client).filter(Client.id == booking.client_id).first()
+        # Get first booking info
+        first_booking = bookings[0]
+        client = db.query(Client).filter(Client.id == first_booking.client_id).first()
         
-        # Зберегти інфо
-        booking_id = booking.id
-        client_name = client.name
-        client_phone = client.phone
-        booking_date = booking.booking_date
-        booking_hour = booking.booking_hour
+        # Collect hours
+        hours = sorted([b.booking_hour for b in bookings])
+        hours_display = format_hours_display(hours)
+        date = first_booking.booking_date
         
-        # Видалити з БД
-        db.delete(booking)
+        # Delete all bookings
+        for booking in bookings:
+            db.delete(booking)
         db.commit()
         
-        # Повернути основні кнопки (без скасування)
         await update.message.reply_text(
-            "❌ <b>Бронювання скасовано!</b>\n\n"
-            f"📅 {booking_date.strftime('%d.%m.%Y')} о {booking_hour}:00\n\n"
-            "Якщо передумаєте - створіть нове бронювання на сайті.",
+            f"""❌ <b>Бронювання скасовано!</b>
+
+📅 {date.strftime('%d.%m.%Y')}
+🕐 {hours_display}
+
+Якщо передумаєте - створіть нове бронювання на сайті.""",
             reply_markup=get_main_keyboard(),
             parse_mode='HTML'
         )
         
-        # Очистити user_data
+        # Clear context
         context.user_data.clear()
         
-        # Сповістити адмінів
+        # Notify admins
         username = update.effective_user.username
         tg = f"@{username}" if username else f"ID: {user_id}"
+        
         await notify_admins(
             context,
-            f"❌ <b>Бронювання скасовано клієнтом</b>\n\n"
-            f"ID: #{booking_id}\n"
-            f"👤 {client_name}\n"
-            f"📞 {client_phone}\n"
-            f"💬 {tg}\n"
-            f"📅 {booking_date.strftime('%d.%m.%Y')} {booking_hour}:00\n\n"
-            f"⚠️ Скасовано через постійну кнопку"
+            f"""❌ <b>Бронювання скасовано клієнтом</b>
+
+ID: #{first_booking.id}
+👤 {client.name}
+📞 {client.phone}
+💬 {tg}
+
+📅 {date.strftime('%d.%m.%Y')}
+🕐 {hours_display}"""
         )
-    
+        
     finally:
         db.close()
 
-async def cancel_booking(query, context, bid):
+async def handle_photo(update: Update, context):
+    """Handle payment screenshot"""
+    user_id = update.effective_user.id
     db = get_db()
+    
     try:
-        booking = db.query(Booking).filter(Booking.id == int(bid)).first()
-        if not booking:
-            await query.answer("❌ Не знайдено")
-            return
-        client = db.query(Client).filter(Client.id == booking.client_id).first()
-        name, phone = client.name, client.phone
-        date, hour = booking.booking_date, booking.booking_hour
-        db.delete(booking)
-        db.commit()
-        try:
-            await query.edit_message_reply_markup(reply_markup=None)
-            await query.edit_message_text(query.message.text + "\n\n❌ <b>СКАСОВАНО</b>", parse_mode='HTML')
-        except: pass
+        # Find confirmed booking for this user
+        bookings = db.query(Booking).filter(
+            Booking.telegram_user_id == user_id,
+            Booking.status == 'confirmed'
+        ).all()
         
-        await context.bot.send_message(
-            query.message.chat_id, 
-            "❌ Скасовано",
+        if not bookings:
+            await update.message.reply_text(
+                "ℹ️ У вас немає підтверджених бронювань, які очікують оплату."
+            )
+            return
+        
+        # Update all bookings to paid
+        for booking in bookings:
+            booking.status = 'paid'
+        db.commit()
+        
+        # Get first booking info
+        first_booking = bookings[0]
+        client = db.query(Client).filter(Client.id == first_booking.client_id).first()
+        
+        hours = sorted([b.booking_hour for b in bookings])
+        hours_display = format_hours_display(hours)
+        
+        services_summary = format_services_summary(first_booking)
+        
+        discount_info = ""
+        if len(hours) >= 3:
+            discount_info = " (зі знижкою 10%)"
+        
+        # Confirm to client
+        photographer_contact = ""
+        if first_booking.photographer_choice == 'studio':
+            photographer_contact = "\n\n💬 <b>Зв'язатись з фотографом для обговорення ідеї:</b> @lonkilin"
+        
+        await update.message.reply_text(
+            f"""✅ <b>Квитанцію отримано!</b>
+
+Оплата буде перевірена найближчим часом.
+
+Дякуємо за бронювання{discount_info}! 🎉
+
+Чекаємо на вас у студії! 📸
+
+📅 {first_booking.booking_date.strftime('%d.%m.%Y')}
+🕐 {hours_display}{photographer_contact}""",
+            parse_mode='HTML',
             reply_markup=get_main_keyboard()
         )
         
-        # Очистити user_data
-        context.user_data.clear()
+        # Forward to admins
+        username = update.effective_user.username
+        tg = f"@{username}" if username else f"ID: {user_id}"
         
-        username = query.from_user.username
-        tg = f"@{username}" if username else f"ID: {query.from_user.id}"
-        await notify_admins(context, f"❌ <b>Скасовано</b>\n\nID: #{bid}\n👤 {name}\n📞 {phone}\n💬 {tg}\n📅 {date.strftime('%d.%m.%Y')} {hour}:00")
+        admin_message = f"""💰 <b>Отримано оплату!</b>
+
+ID: #{first_booking.id}
+👤 {client.name}
+📞 {client.phone}
+💬 {tg}
+
+📅 {first_booking.booking_date.strftime('%d.%m.%Y')}
+🕐 {hours_display} ({len(hours)} год)
+
+{services_summary}
+
+📸 Скріншот квитанції:"""
+        
+        for admin_id in ADMIN_IDS:
+            try:
+                await context.bot.send_message(
+                    chat_id=admin_id,
+                    text=admin_message,
+                    parse_mode='HTML'
+                )
+                await context.bot.forward_message(
+                    chat_id=admin_id,
+                    from_chat_id=update.message.chat_id,
+                    message_id=update.message.message_id
+                )
+            except:
+                pass
+        
+        # NEW: Notify photographer if studio photographer selected
+        if first_booking.photographer_choice == 'studio':
+            photographer_message = f"""✅ <b>Оплата підтверджена!</b>
+
+📸 <b>Ваша фотосесія:</b>
+
+📅 Дата: {first_booking.booking_date.strftime('%d.%m.%Y')}
+🕐 Час: {hours_display} ({len(hours)} год)
+
+👤 Клієнт: {client.name}
+📞 Телефон: {client.phone}
+
+📋 <b>Деталі:</b>
+{services_summary}
+
+💰 Оплату отримано і перевірено{discount_info}
+
+🎯 <b>Будьте готові!</b>
+Клієнт чекає на вас у студії в призначений час."""
+            
+            try:
+                await context.bot.send_message(
+                    chat_id=PHOTOGRAPHER_ID,
+                    text=photographer_message,
+                    parse_mode='HTML'
+                )
+                # Also forward payment screenshot to photographer
+                await context.bot.forward_message(
+                    chat_id=PHOTOGRAPHER_ID,
+                    from_chat_id=update.message.chat_id,
+                    message_id=update.message.message_id
+                )
+            except:
+                pass
+        
     finally:
         db.close()
 
-async def handle_photo(update, context):
-    user_id = update.effective_user.id
-    db = get_db()
-    try:
-        booking = db.query(Booking).filter(Booking.telegram_user_id == user_id, Booking.status == 'confirmed').first()
-        if booking:
-            client = db.query(Client).filter(Client.id == booking.client_id).first()
-            booking.status = "paid"
-            db.commit()
-            
-            # Повернути основні кнопки після оплати
-            await update.message.reply_text(
-                "✅ Квитанцію отримано!\n\nОплата буде перевірена.\n\n"
-                "Дякуємо за бронювання! 🎉",
-                reply_markup=get_main_keyboard()
-            )
-            
-            # Очистити user_data
-            context.user_data.clear()
-            
-            services = ""
-            if booking.total_price and booking.total_price > 1000:
-                services = f"\n\n{format_services(booking.people_count or 4, booking.zone_choice or 'light', booking.animals_count or 0, booking.background_choice or 'none', booking.total_price)}"
-            
-            username = update.effective_user.username
-            tg = f"@{username}" if username else f"ID: {user_id}"
-            for admin_id in ADMIN_IDS:
-                try:
-                    await context.bot.forward_message(admin_id, update.message.chat_id, update.message.message_id)
-                    await context.bot.send_message(admin_id, f"💰 <b>Квитанція</b>\n\nID: #{booking.id}\n👤 {client.name}\n📞 {client.phone}\n💬 {tg}\n📅 {booking.booking_date.strftime('%d.%m.%Y')} {booking.booking_hour}:00{services}\n\n❗️ Перевірте!", parse_mode='HTML')
-                except: pass
-        else:
-            await update.message.reply_text(
-                "ℹ️ Спочатку створіть бронювання на сайті",
-                reply_markup=get_main_keyboard()
-            )
-    finally:
-        db.close()
-
-async def help_cmd(update, context):
-    await update.message.reply_text(
-        "ℹ️ <b>Довідка</b>\n\n1. Бронюйте на сайті\n2. Підтвердіть тут\n3. Оберіть послуги\n4. Оплатіть\n5. Надішліть квитанцію", 
-        parse_mode='HTML',
-        reply_markup=get_main_keyboard()
-    )
+# ========== MAIN ==========
 
 def main():
+    """Start bot"""
     app = Application.builder().token(BOT_TOKEN).build()
+    
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-    print(f"🤖 Bot started! Admins: {ADMIN_IDS}")
+    
+    print("🤖 Bot started! (Simplified v2.0)")
+    print("✅ All services selected on website")
+    print("✅ Only confirmation and payment")
+    print(f"👥 Admins: {len(ADMIN_IDS)}")
+    if PHOTOGRAPHER_ID:
+        print(f"📸 Photographer notifications: ENABLED (ID: {PHOTOGRAPHER_ID})")
+    else:
+        print("📸 Photographer notifications: DISABLED (set PHOTOGRAPHER_ID in .env)")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":

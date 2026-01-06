@@ -7,6 +7,7 @@ from typing import List
 from datetime import date, timedelta, datetime
 import calendar
 import os
+import uuid
 
 from . import models, schemas
 from .database import engine, get_db
@@ -16,7 +17,7 @@ from .telegram_service import telegram_notifier
 # Створення таблиць
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Photo Studio Booking System", version="1.0.0")
+app = FastAPI(title="Photo Studio Booking System", version="2.0.0")
 
 # Статичні файли
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -27,6 +28,7 @@ async def root():
     return FileResponse("static/index.html")
 
 @app.get("/admin")
+@app.get("/admin/")
 async def admin_page():
     """Сторінка адміністратора"""
     return FileResponse("static/admin.html")
@@ -44,23 +46,33 @@ def admin_login(login_data: schemas.LoginRequest):
     access_token = create_access_token(data={"role": "admin"})
     return schemas.LoginResponse(access_token=access_token)
 
-@app.post("/api/bookings/", response_model=schemas.BookingResponse, status_code=201)
+@app.post("/api/bookings/", response_model=schemas.BookingGroupResponse, status_code=201)
 async def create_booking(
     booking: schemas.BookingCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
-    """Створити нове бронювання з переадресацією на Telegram"""
+    """
+    Створити нове бронювання з МНОЖИННИМИ ГОДИНАМИ
     
-    # Перевірити, чи година вже зайнята
-    existing_booking = db.query(models.Booking).filter(
-        models.Booking.booking_date == booking.booking_date,
-        models.Booking.booking_hour == booking.booking_hour,
-        models.Booking.status.in_(['pending', 'confirmed', 'paid'])
-    ).first()
+    Клієнт може обрати декілька годин (наприклад [14, 15, 16])
+    Система створить окремий запис для кожної години
+    Всі записи будуть зв'язані через booking_group_id
+    """
     
-    if existing_booking:
-        raise HTTPException(status_code=400, detail="Ця година вже зайнята")
+    # Перевірити, чи всі обрані години доступні
+    for hour in booking.booking_hours:
+        existing_booking = db.query(models.Booking).filter(
+            models.Booking.booking_date == booking.booking_date,
+            models.Booking.booking_hour == hour,
+            models.Booking.status.in_(['pending', 'confirmed', 'paid'])
+        ).first()
+        
+        if existing_booking:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Година {hour}:00 вже зайнята. Оберіть іншу годину."
+            )
     
     try:
         # Знайти або створити клієнта
@@ -73,44 +85,100 @@ async def create_booking(
             db.add(client)
             db.flush()
         
-        # Створити бронювання зі статусом pending
-        db_booking = models.Booking(
-            client_id=client.id,
-            booking_date=booking.booking_date,
-            booking_hour=booking.booking_hour,
-            status="pending"
-        )
-        db.add(db_booking)
+        # Згенерувати booking_group_id для зв'язку всіх годин
+        booking_group_id = str(uuid.uuid4())
+        
+        # Створити ОКРЕМИЙ запис для КОЖНОЇ години
+        booking_ids = []
+        
+        for hour in booking.booking_hours:
+            db_booking = models.Booking(
+                client_id=client.id,
+                booking_date=booking.booking_date,
+                booking_hour=hour,
+                booking_group_id=booking_group_id,
+                status="pending",
+                # Всі послуги однакові для всіх годин
+                people_count=booking.people_count,
+                zone_choice=booking.zone_choice,
+                animals_count=booking.animals_count,
+                background_choice=booking.background_choice,
+                photographer_choice=booking.photographer_choice,
+                total_price=booking.total_price
+            )
+            db.add(db_booking)
+            db.flush()
+            booking_ids.append(db_booking.id)
+        
         db.commit()
-        db.refresh(db_booking)
         
-        # 🔗 Створити Telegram deep link
+        # Створити Telegram deep link (використовуємо ID першого бронювання)
+        first_booking_id = booking_ids[0]
         bot_username = os.getenv("BOT_USERNAME", "your_bot_username")
-        telegram_link = f"https://t.me/{bot_username}?start=booking_{db_booking.id}"
+        telegram_link = f"https://t.me/{bot_username}?start=booking_{first_booking_id}"
         
-        # 🤖 ВІДПРАВИТИ TELEGRAM СПОВІЩЕННЯ АДМІНАМ (в фоновому режимі)
+        # Відправити сповіщення адміну (в фоновому режимі)
+        hours_display = format_hours_display(booking.booking_hours)
         background_tasks.add_task(
             telegram_notifier.send_new_booking_notification,
             client_name=booking.name,
             client_phone=booking.phone,
             booking_date=str(booking.booking_date),
-            booking_hour=booking.booking_hour,
-            booking_id=db_booking.id
+            booking_hours=hours_display,
+            booking_id=first_booking_id,
+            people_count=booking.people_count,
+            zone_choice=booking.zone_choice,
+            animals_count=booking.animals_count,
+            background_choice=booking.background_choice,
+            photographer_choice=booking.photographer_choice,
+            total_price=booking.total_price
         )
         
-        # Додати telegram_link до відповіді
-        response = schemas.BookingResponse.from_orm(db_booking)
-        response.telegram_link = telegram_link
-        
-        return response
+        # Повернути відповідь
+        return schemas.BookingGroupResponse(
+            booking_group_id=booking_group_id,
+            booking_ids=booking_ids,
+            hours=booking.booking_hours,
+            client_name=booking.name,
+            client_phone=booking.phone,
+            booking_date=booking.booking_date,
+            status="pending",
+            people_count=booking.people_count,
+            zone_choice=booking.zone_choice,
+            animals_count=booking.animals_count,
+            background_choice=booking.background_choice,
+            photographer_choice=booking.photographer_choice,
+            total_price=booking.total_price,
+            telegram_link=telegram_link
+        )
         
     except IntegrityError:
-        # ЗАХИСТ: Якщо двоє одночасно намагаються забронювати - база відхилить другого
         db.rollback()
         raise HTTPException(
             status_code=400,
-            detail="Ця година щойно була заброньована іншим користувачем. Оберіть іншу годину."
+            detail="Одна з обраних годин щойно була заброньована. Спробуйте ще раз."
         )
+
+def format_hours_display(hours: List[int]) -> str:
+    """
+    Форматувати години для відображення
+    [14, 15, 16] → "14:00-17:00"
+    [14, 17] → "14:00, 17:00"
+    """
+    if not hours:
+        return ""
+    if len(hours) == 1:
+        return f"{hours[0]}:00"
+    
+    # Перевірити чи години підряд
+    is_consecutive = all(hours[i] == hours[i-1] + 1 for i in range(1, len(hours)))
+    
+    if is_consecutive:
+        # Показати як діапазон
+        return f"{hours[0]}:00-{hours[-1] + 1}:00"
+    else:
+        # Показати окремо
+        return ", ".join(f"{h}:00" for h in hours)
 
 @app.get("/api/bookings/", response_model=List[schemas.BookingResponse])
 def get_bookings(
@@ -149,7 +217,7 @@ def get_month_calendar(
     first_day = date(year, month, 1)
     last_day = date(year, month, num_days)
     
-    # Отримати всі АКТИВНІ бронювання за місяць (pending, confirmed, paid)
+    # Отримати всі АКТИВНІ бронювання за місяць
     bookings = db.query(models.Booking).filter(
         models.Booking.booking_date >= first_day,
         models.Booking.booking_date <= last_day,
@@ -163,8 +231,8 @@ def get_month_calendar(
             bookings_by_date[booking.booking_date] = []
         bookings_by_date[booking.booking_date].append(booking.booking_hour)
     
-    # Робочі години студії (наприклад, з 9 до 21)
-    WORK_HOURS = list(range(9, 21))
+    # Робочі години студії
+    WORK_HOURS = list(range(9, 22))  # 9-21
     
     # Створити відповідь для кожного дня
     result = []
@@ -189,159 +257,195 @@ def get_day_status(
 ):
     """Отримати статус конкретного дня"""
     
-    # Вибрати тільки активні бронювання (pending, confirmed, paid)
     bookings = db.query(models.Booking).filter(
         models.Booking.booking_date == booking_date,
         models.Booking.status.in_(['pending', 'confirmed', 'paid'])
     ).all()
     
-    # Робочі години студії (з 9 до 21)
-    WORK_HOURS = list(range(9, 21))
+    WORK_HOURS = list(range(9, 22))
     booked_hours = [b.booking_hour for b in bookings]
     available_hours = [h for h in WORK_HOURS if h not in booked_hours]
     
     return schemas.DayStatusResponse(
         date=booking_date,
-        has_bookings=len(booked_hours) > 0,
+        has_bookings=len(bookings) > 0,
         available_hours=available_hours,
         booked_hours=booked_hours
     )
 
-# Admin-only endpoints
+# ADMIN ENDPOINTS
+
+@app.get("/api/admin/bookings/list")
+def get_admin_bookings_list(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin)
+):
+    """Отримати список всіх бронювань за період (для адміна)"""
+    
+    bookings = db.query(models.Booking).filter(
+        models.Booking.booking_date >= start_date,
+        models.Booking.booking_date <= end_date,
+        models.Booking.status.in_(['pending', 'confirmed', 'paid'])
+    ).order_by(models.Booking.booking_date, models.Booking.booking_hour).all()
+    
+    # Форматувати результат
+    result = []
+    for booking in bookings:
+        # Підрахувати години в групі
+        hours_in_group = 1
+        if booking.booking_group_id:
+            hours_in_group = db.query(models.Booking).filter(
+                models.Booking.booking_group_id == booking.booking_group_id,
+                models.Booking.status.in_(['pending', 'confirmed', 'paid'])
+            ).count()
+        
+        has_discount = hours_in_group >= 3
+        
+        result.append({
+            'id': booking.id,
+            'booking_date': booking.booking_date,
+            'booking_hour': booking.booking_hour,
+            'booking_group_id': booking.booking_group_id,
+            'status': booking.status,
+            'client': {
+                'id': booking.client.id,
+                'name': booking.client.name,
+                'phone': booking.client.phone
+            },
+            'people_count': booking.people_count,
+            'zone_choice': booking.zone_choice,
+            'animals_count': booking.animals_count,
+            'background_choice': booking.background_choice,
+            'photographer_choice': booking.photographer_choice,
+            'total_price': booking.total_price,
+            'hours_in_group': hours_in_group,
+            'has_discount': has_discount,
+            'created_at': booking.created_at
+        })
+    
+    return result
+
 @app.get("/api/admin/day/{booking_date}", response_model=schemas.AdminDayStatusResponse)
+@app.get("/api/admin/bookings/{booking_date}", response_model=schemas.AdminDayStatusResponse)
 def get_admin_day_status(
     booking_date: date,
     db: Session = Depends(get_db),
-    admin: dict = Depends(get_current_admin)
+    current_admin: dict = Depends(get_current_admin)
 ):
-    """Отримати детальний статус дня для адміна (показуємо всі бронювання)"""
+    """Отримати детальну інформацію про всі бронювання в конкретний день (для адміна)"""
     
-    # Адмін бачить ВСІ бронювання (включно з cancelled)
+    # Отримати всі бронювання на цю дату (включаючи скасовані)
     bookings = db.query(models.Booking).filter(
         models.Booking.booking_date == booking_date
     ).all()
     
-    # Робочі години студії (з 9 до 21)
-    WORK_HOURS = list(range(9, 21))
+    # Підрахувати кількість годин в кожній групі
+    group_hours_count = {}
+    for booking in bookings:
+        if booking.status in ['pending', 'confirmed', 'paid'] and booking.booking_group_id:
+            if booking.booking_group_id not in group_hours_count:
+                group_hours_count[booking.booking_group_id] = 0
+            group_hours_count[booking.booking_group_id] += 1
     
-    # Створити словник бронювань по годинах
-    bookings_dict = {b.booking_hour: b for b in bookings}
+    # Створити словник з інформацією про бронювання
+    booking_info = {}
+    for booking in bookings:
+        if booking.status in ['pending', 'confirmed', 'paid']:
+            client = booking.client
+            hours_in_group = group_hours_count.get(booking.booking_group_id, 1) if booking.booking_group_id else 1
+            has_discount = hours_in_group >= 3
+            
+            booking_info[booking.booking_hour] = {
+                'client_name': client.name,
+                'client_phone': client.phone,
+                'booking_id': booking.id,
+                'booking_group_id': booking.booking_group_id,
+                'photographer_choice': booking.photographer_choice,
+                'total_price': booking.total_price,
+                'hours_in_group': hours_in_group,
+                'has_discount': has_discount
+            }
     
-    # Створити детальний список всіх годин
-    booking_details = []
+    # Створити список для всіх робочих годин
+    WORK_HOURS = list(range(9, 22))
+    result_bookings = []
+    
     for hour in WORK_HOURS:
-        if hour in bookings_dict:
-            booking = bookings_dict[hour]
-            booking_details.append(schemas.BookingDetailResponse(
+        if hour in booking_info:
+            info = booking_info[hour]
+            result_bookings.append(schemas.BookingDetailResponse(
                 hour=hour,
                 is_booked=True,
-                client_name=booking.client.name,
-                client_phone=booking.client.phone,
-                booking_id=booking.id
+                client_name=info['client_name'],
+                client_phone=info['client_phone'],
+                booking_id=info['booking_id'],
+                booking_group_id=info['booking_group_id'],
+                photographer_choice=info['photographer_choice'],
+                total_price=info['total_price'],
+                hours_in_group=info['hours_in_group'],
+                has_discount=info['has_discount']
             ))
         else:
-            booking_details.append(schemas.BookingDetailResponse(
+            result_bookings.append(schemas.BookingDetailResponse(
                 hour=hour,
                 is_booked=False
             ))
     
     return schemas.AdminDayStatusResponse(
         date=booking_date,
-        has_bookings=len(bookings) > 0,
-        bookings=booking_details
+        has_bookings=len(booking_info) > 0,
+        bookings=result_bookings
     )
 
-@app.get("/api/admin/bookings/", response_model=List[schemas.BookingResponse])
-def get_admin_bookings(
-    start_date: date = Query(None),
-    end_date: date = Query(None),
-    db: Session = Depends(get_db),
-    admin: dict = Depends(get_current_admin)
-):
-    """Отримати всі бронювання для адміна (з деталями)"""
-    query = db.query(models.Booking)
-    
-    if start_date:
-        query = query.filter(models.Booking.booking_date >= start_date)
-    if end_date:
-        query = query.filter(models.Booking.booking_date <= end_date)
-    
-    bookings = query.order_by(
-        models.Booking.booking_date,
-        models.Booking.booking_hour
-    ).all()
-    
-    return bookings
-
-@app.delete("/api/bookings/{booking_id}", status_code=204)
-async def delete_booking(
+@app.delete("/api/admin/bookings/{booking_id}")
+def delete_booking(
     booking_id: int,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    admin: dict = Depends(get_current_admin)
+    current_admin: dict = Depends(get_current_admin)
 ):
-    """Видалити бронювання (тільки для адміна)"""
+    """Видалити ОДНУ годину бронювання (адмін може видаляти години окремо)"""
+    
     booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
     
     if not booking:
         raise HTTPException(status_code=404, detail="Бронювання не знайдено")
     
-    # Зберегти дані для сповіщення перед видаленням
-    client_name = booking.client.name
-    booking_date = str(booking.booking_date)
-    booking_hour = booking.booking_hour
-    
     db.delete(booking)
     db.commit()
     
-    # 🤖 ВІДПРАВИТИ TELEGRAM СПОВІЩЕННЯ про скасування
-    background_tasks.add_task(
-        telegram_notifier.send_booking_cancelled_notification,
-        client_name=client_name,
-        booking_date=booking_date,
-        booking_hour=booking_hour,
-        booking_id=booking_id
-    )
-    
-    return None
+    return {
+        "message": "Бронювання видалено",
+        "booking_id": booking_id,
+        "hour": booking.booking_hour
+    }
 
-@app.get("/api/clients/", response_model=List[schemas.ClientResponse])
-def get_clients(db: Session = Depends(get_db)):
-    """Отримати всіх клієнтів"""
-    clients = db.query(models.Client).all()
-    return clients
-
-@app.post("/api/admin/test-telegram")
-async def test_telegram(admin: dict = Depends(get_current_admin)):
-    """Відправити тестове Telegram повідомлення (тільки для адміна)"""
-    
-    # Отримати chat_ids з налаштувань
-    if not telegram_notifier.admin_chat_ids:
-        raise HTTPException(
-            status_code=400,
-            detail="Telegram chat IDs не налаштовано. Додайте TELEGRAM_ADMIN_CHAT_IDS в .env"
-        )
-    
-    success = False
-    for chat_id in telegram_notifier.admin_chat_ids:
-        result = await telegram_notifier.send_test_message(chat_id)
-        if result:
-            success = True
-    
-    if success:
-        return {"message": "Тестове повідомлення відправлено успішно!"}
-    else:
-        raise HTTPException(status_code=500, detail="Помилка відправки повідомлення")
-
-@app.get("/api/clients/{client_id}", response_model=schemas.ClientResponse)
-def get_client(
-    client_id: int,
-    db: Session = Depends(get_db)
+@app.delete("/api/admin/bookings/group/{booking_group_id}")
+def delete_booking_group(
+    booking_group_id: str,
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin)
 ):
-    """Отримати клієнта по ID"""
-    client = db.query(models.Client).filter(models.Client.id == client_id).first()
+    """Видалити ВСЮ ГРУПУ бронювань (всі години)"""
     
-    if not client:
-        raise HTTPException(status_code=404, detail="Клієнт не знайдений")
+    bookings = db.query(models.Booking).filter(
+        models.Booking.booking_group_id == booking_group_id
+    ).all()
     
-    return client
+    if not bookings:
+        raise HTTPException(status_code=404, detail="Група бронювань не знайдена")
+    
+    deleted_hours = [b.booking_hour for b in bookings]
+    
+    for booking in bookings:
+        db.delete(booking)
+    
+    db.commit()
+    
+    return {
+        "message": "Вся група видалена",
+        "booking_group_id": booking_group_id,
+        "deleted_hours": deleted_hours,
+        "count": len(deleted_hours)
+    }
