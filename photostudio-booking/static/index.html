@@ -648,9 +648,9 @@
                     <label>🎨 Фон:</label>
                     <select id="backgroundChoice" onchange="updatePricePreview()">
                         <option value="none" selected>Без фону</option>
-                        <option value="white" id="whiteOption">⚪ Білий (+100 грн/год)</option>
-                        <option value="black">⚫ Чорний (+100 грн/год)</option>
-                        <option value="red">🔴 Червоний (+100 грн/год)</option>
+                        <option value="white" id="whiteOption">⚪ Білий (безкоштовно)</option>
+                        <option value="black">⚫ Чорний (безкоштовно)</option>
+                        <option value="red">🔴 Червоний (безкоштовно)</option>
                     </select>
                     <small id="backgroundHint" style="display: none; color: #f44336; margin-top: 5px;">
                         ⚠️ Білий фон недоступний для темної зони
@@ -661,7 +661,7 @@
                     <label>📷 Фотограф:</label>
                     <select id="photographerChoice" onchange="updatePricePreview()">
                         <option value="client" selected>🙋 Ваш фотограф</option>
-                        <option value="studio">👨‍💼 Наш фотограф (+2000 грн/год)</option>
+                        <option value="studio">👨‍💼 Індивідуальна зйомка з нашим фотографом (+2000 грн/год)</option>
                     </select>
                 </div>
 
@@ -945,7 +945,7 @@
             const animalsExtra = Math.max(0, animals - 1) * 100;
 
             const bg = document.getElementById('backgroundChoice').value;
-            const bgExtra = bg !== 'none' ? 100 : 0;
+            const bgExtra = bg !== 'none' ? 0 : 0;
 
             const pricePerHour = basePrice + peopleExtra + zoneExtra + animalsExtra + bgExtra;
             let totalForHours = pricePerHour * hoursCount;
