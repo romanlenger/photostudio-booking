@@ -510,13 +510,13 @@ ID: #{booking_id}
 
 Будь ласка, спробуйте:
 - Оплату на реквізити
-- Або напишіть нам: @lonkilin
+- Або напишіть нам: @clique_admin
 
 Помилка: {str(e)}"""
             
             keyboard = [
                 [InlineKeyboardButton("📋 Оплата на реквізити", callback_data=f"pay_manual_{booking_id}")],
-                [InlineKeyboardButton("💬 Написати підтримку", url="https://t.me/lonkilin")]
+                [InlineKeyboardButton("💬 Написати підтримку", url="https://t.me/clique_admin")]
             ]
             
             await query.edit_message_text(
