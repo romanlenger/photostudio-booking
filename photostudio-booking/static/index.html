@@ -1150,8 +1150,19 @@
                 const result = await response.json();
 
                 if (result.telegram_link) {
-                    alert('✅ Бронювання створено!\n\n📱 Зараз ви будете перенаправлені в Telegram для підтвердження.');
-                    window.location.href = result.telegram_link;  // ← Замість window.open()
+                    // Спробувати відкрити в новій вкладці
+                    const opened = window.open(result.telegram_link, '_blank');
+                    
+                    // Якщо не вийшло (popup заблоковано) - відкрити в цій же вкладці
+                    setTimeout(() => {
+                        if (!opened || opened.closed || typeof opened.closed == 'undefined') {
+                            window.location.href = result.telegram_link;
+                        } else {
+                            alert('✅ Бронювання створено!\n\n📱 Перейдіть в Telegram для підтвердження.');
+                            closeModal();
+                            loadCalendar();
+                        }
+                    }, 500);
                 }
             } catch (error) {
                 alert('❌ Помилка: ' + error.message);
