@@ -335,7 +335,7 @@ async def confirm_booking(query, context, first_booking_id):
         keyboard = [
             [InlineKeyboardButton("📋 Скопіювати картку", callback_data="copy_card")],
             [InlineKeyboardButton("📝 Скопіювати призначення", callback_data=f"copy_purpose_{date_str}_{hours_display.replace(':', '')}")],
-            [InlineKeyboardButton("📄 Договір публічної оферти", url=f"{WEBSITE_URL}/contract.html")]
+            [InlineKeyboardButton("📄 Договір публічної оферти", url=f"{WEBSITE_URL}/static/contract.html")]
         ]
         
         # Update original message
