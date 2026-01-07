@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Бронювання Фотостудії CLIQUE</title>
-    <style>
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Inter:wght@400;500&display=swap');
         * {
             margin: 0;
             padding: 0;
@@ -19,7 +20,8 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            /* font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; */
+            font-family: 'Inter', sans-serif;
             background: transparent;
             min-height: 100vh;
             padding: 0;
@@ -28,7 +30,7 @@
 
         header {
             /* display: flex; */
-            background: linear-gradient(135deg, #000000 0%, #333333 100%);
+            background: linear-gradient(135deg, #000000 0%, #555555 100%);
             color: white;
             padding: 20px;
             text-align: center;
@@ -102,7 +104,7 @@
 
         .container {
             max-width: 1200px;
-            margin-top: 200px;
+            margin-top: 215px;
             margin-left: auto;
             margin-right: auto;
             margin-bottom: 0;
@@ -169,8 +171,8 @@
         }
 
         .day.has-bookings {
-            background: #ffe5e5;
-            border-color: #ffcccc;
+            background: #ffdcdc;
+            border-color: #f1a9a9;
         }
 
         .day-number {
@@ -190,7 +192,7 @@
             justify-content: center;
             gap: 30px;
             padding: 15px;
-            background: #f8f9fa;
+            background: #ffffff;
             border-radius: 10px;
             margin-top: 20px;
         }
@@ -216,6 +218,7 @@
         /* Modal */
         .modal {
             display: none;
+            padding: 20px 0 !important;
             position: fixed;
             z-index: 2000;
             left: 0;
@@ -281,6 +284,7 @@
 
         .step-section.active {
             display: block;
+            min-height: auto !important;
         }
 
         .step-title {
@@ -300,7 +304,8 @@
         .hour-btn {
             padding: 15px;
             border: 2px solid #ddd;
-            border-radius: 8px;
+            color: #000000;
+            border-radius: 20px;
             background: white;
             cursor: pointer;
             transition: all 0.3s;
@@ -308,33 +313,35 @@
             font-weight: 500;
         }
 
-        .hour-btn:hover:not(.booked) {
-            border-color: #4CAF50;
+        /* .hour-btn:hover:not(.booked) {
+            border-color: #4b4b4b;
+            background: #000000;
+            color: #ffffff;
             transform: scale(1.05);
-        }
+        } */
 
         .hour-btn.selected {
-            background: #4CAF50;
+            background: #000000;
             color: white;
-            border-color: #4CAF50;
+            border-color: hsl(0, 0%, 26%);
             font-weight: bold;
         }
 
         .hour-btn.booked {
             background: #f5f5f5;
-            color: #999;
+            color: #000000;
             cursor: not-allowed;
             opacity: 0.5;
         }
 
         .selected-hours-display {
-            background: #e7f3ff;
+            background: #d6d7d9;
             padding: 15px;
             border-radius: 8px;
             margin: 15px 0;
             text-align: center;
             font-weight: bold;
-            color: #0066cc;
+            color: #000000;
         }
 
         .hint {
@@ -346,7 +353,7 @@
         }
 
         .discount-hint {
-            color: #ff9800;
+            color: #000000;
             font-weight: bold;
         }
 
@@ -382,15 +389,15 @@
         }
 
         .photographer-choice {
-            background: #fff3cd;
+            background: #ffffff;
             padding: 15px;
             border-radius: 8px;
-            border: 2px solid #ffc107;
+            border: 2px solid #181818;
         }
 
         /* Price Display */
         .price-display {
-            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            background: linear-gradient(135deg, #000000 0%, #0f5712 100%);
             color: white;
             padding: 20px;
             border-radius: 8px;
@@ -454,12 +461,12 @@
         }
 
         .btn-next {
-            background: #007bff;
+            background: #1d1d1d;
             color: white;
         }
 
         .btn-submit {
-            background: #28a745;
+            background: #0d2312;
             color: white;
         }
 
@@ -468,60 +475,246 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
 
-        /* Mobile Responsive */
+                /* Mobile Responsive */
+                /* Mobile Responsive */
         @media screen and (max-width: 768px) {
+            /* Header */
             header {
                 padding: 15px;
                 width: calc(100%);
             }
-
+            
             h1 {
                 font-size: 1.6em;
             }
-
+            
+            /* Calendar Header */
             .calendar-header {
                 top: 122px;
                 padding: 15px;
             }
-
+            
             .calendar-header h2 {
                 font-size: 1.2em;
             }
-
+            
             .nav-buttons button {
                 padding: 10px 16px;
                 font-size: 0.9em;
             }
-
+            
+            /* Container */
             .container {
                 margin-top: 187px;
             }
-
+            
+            /* Calendar */
             .calendar {
                 gap: 5px;
+                margin-top: 15px;
             }
-
+            
             .day {
                 min-height: 60px;
             }
-
+            
             .day-number {
                 font-size: 1.1em;
             }
-
-            .modal-content {
-                width: 95%;
-                padding: 20px;
-            }
-
+            
+            /* Hours Grid */
             .hours-grid {
                 grid-template-columns: repeat(3, 1fr);
+            }
+            
+            /* ===== MODAL - КРАСИВО ===== */
+            
+            /* Заблокувати body scroll коли modal відкрите */
+            body.modal-open {
+                overflow: hidden;
+                position: fixed;
+                width: 100%;
+            }
+            
+            /* Modal на весь екран */
+            .modal {
+                padding: 0;
+                align-items: flex-start;
+            }
+            
+            .modal-content {
+                width: 100%;
+                max-width: 100%;
+                height: 100vh;
+                max-height: 100vh;
+                margin: 0;
+                padding: 20px;
+                border-radius: 0;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            /* Компактніші відступи */
+            .modal-header {
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+            }
+            
+            .modal-header h3 {
+                font-size: 1.3em;
+            }
+            
+            #modalDate {
+                font-size: 1em;
+            }
+            
+            .step-title {
+                font-size: 1.1em;
+                margin-bottom: 15px;
+            }
+            
+            /* Форми компактні */
+            .form-group {
+                margin-bottom: 12px;
+            }
+            
+            .form-group label {
+                font-size: 0.9em;
+                margin-bottom: 5px;
+            }
+            
+            .form-group input,
+            .form-group select {
+                padding: 10px;
+                font-size: 1em;
+            }
+            
+            /* Години */
+            .hours-grid {
+                gap: 8px;
+                margin: 15px 0;
+            }
+            
+            .hour-btn {
+                padding: 12px 8px;
+                font-size: 0.95em;
+            }
+            
+            /* Прев'ю ціни */
+            .price-preview {
+                padding: 12px;
+                margin: 15px 0;
+            }
+            
+            .price-preview h3 {
+                font-size: 1em;
+            }
+            
+            /* Кнопки навігації */
+            .nav-btn-group {
+                margin-top: 20px;
+                gap: 10px;
+            }
+            
+            .btn {
+                padding: 12px 20px;
+                font-size: 0.95em;
+            }
+            
+            /* Close button */
+            .close {
+                font-size: 2em;
+                padding: 5px 15px;
+            }
+            .modal-header {
+                margin-bottom: 10px !important;
+                padding-bottom: 8px !important;
+            }
+
+            .modal-header h3 {
+                font-size: 1.2em !important;
+                margin-bottom: 3px !important;
+            }
+
+            #modalDate {
+                font-size: 0.9em !important;
+            }
+
+            .step-title {
+                font-size: 1.05em !important;
+                margin-bottom: 10px !important;
+            }
+
+            /* Форми */
+            .form-group {
+                margin-bottom: 8px !important;
+            }
+
+            .form-group label {
+                font-size: 0.85em !important;
+                margin-bottom: 3px !important;
+            }
+
+            .form-group input,
+            .form-group select {
+                padding: 8px !important;
+                font-size: 0.95em !important;
+            }
+
+            /* Години */
+            .hours-grid {
+                gap: 6px !important;
+                margin: 10px 0 !important;
+            }
+
+            .hour-btn {
+                padding: 10px 6px !important;
+                font-size: 0.9em !important;
+            }
+
+            /* Текст обраних годин */
+            #selectedHoursText {
+                font-size: 0.9em !important;
+                margin: 8px 0 !important;
+            }
+
+            /* Прев'ю */
+            .price-preview {
+                padding: 10px !important;
+                margin: 10px 0 !important;
+            }
+
+            .price-preview h3 {
+                font-size: 0.95em !important;
+                margin-bottom: 5px !important;
+            }
+
+            /* Кнопки */
+            .nav-btn-group {
+                margin-top: 12px !important;
+                gap: 8px !important;
+            }
+
+            .btn {
+                padding: 10px 18px !important;
+                font-size: 0.9em !important;
+            }
+
+            /* Summary */
+            .summary-box p {
+                margin: 5px 0 !important;
+                font-size: 0.9em !important;
+            }
+
+            .summary-box hr {
+                margin: 8px 0 !important;
             }
         }
 
         @media screen and (max-width: 480px) {
             .calendar {
                 gap: 3px;
+                margin-top: 10px;
             }
 
             .day {
@@ -600,8 +793,8 @@
 
             <!-- STEP 1: Select Hours -->
             <div id="step1" class="step-section active">
-                <h4 class="step-title">1️⃣ Оберіть години (можна декілька)</h4>
-                <p class="hint">💡 Натисніть на години щоб обрати. Обрані години підсвітяться.</p>
+                <h4 class="step-title">1. Оберіть години (можна декілька)</h4>
+                <p class="hint">Натисніть на години щоб обрати. Обрані години підсвітяться.</p>
                 <p class="hint discount-hint">🎉 При бронюванні 3+ годин - знижка 10%!</p>
                 <div class="hours-grid" id="hoursGrid"></div>
                 <div class="selected-hours-display">
@@ -614,15 +807,15 @@
 
             <!-- STEP 2: Services -->
             <div id="step2" class="step-section">
-                <h4 class="step-title">2️⃣ Оберіть послуги</h4>
+                <h4 class="step-title">2️. Оберіть послуги</h4>
                 
                 <div class="form-group">
-                    <label>👥 Кількість людей:</label>
+                    <label>Кількість людей:</label>
                     <select id="peopleCount" onchange="updatePricePreview()">
-                        <option value="1">1 особа</option>
+                        <option value="1" selected>1 особа</option>
                         <option value="2">2 особи</option>
                         <option value="3">3 особи</option>
-                        <option value="4" selected>4 особи (включено)</option>
+                        <option value="4">4 особи</option>
                         <option value="5">5 осіб (+100 грн/год)</option>
                         <option value="6">6 осіб (+200 грн/год)</option>
                         <option value="7">7 осіб (+300 грн/год)</option>
@@ -633,10 +826,10 @@
                 </div>
 
                 <div class="form-group">
-                    <label>📸 Фотозона:</label>
+                    <label>Фотозона:</label>
                     <select id="zoneChoice" onchange="handleZoneChange()">
-                        <option value="light" selected>☀️ Світла зона</option>
-                        <option value="dark">🌙 Темна зона</option>
+                        <option value="light" selected>Світла зона</option>
+                        <option value="dark">Темна зона</option>
                         <option value="both">✨ Обидві зони (+500 грн/год)</option>
                     </select>
                 </div>
@@ -644,20 +837,20 @@
                 <div class="form-group">
                     <label>🐾 Тварини:</label>
                     <select id="animalsCount" onchange="updatePricePreview()">
-                        <option value="0" selected>Немає</option>
-                        <option value="1">1 тварина (включено)</option>
+                        <option value="0" selected>-</option>
+                        <option value="1">1 тварина </option>
                         <option value="2">2 тварини (+100 грн/год)</option>
                         <option value="3">3 тварини (+200 грн/год)</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label>🎨 Фон:</label>
+                    <label>Фон:</label>
                     <select id="backgroundChoice" onchange="updatePricePreview()">
-                        <option value="none" selected>Без фону</option>
-                        <option value="white" id="whiteOption">⚪ Білий (безкоштовно)</option>
-                        <option value="black">⚫ Чорний (безкоштовно)</option>
-                        <option value="red">🔴 Червоний (безкоштовно)</option>
+                        <option value="none" selected>-</option>
+                        <option value="white" id="whiteOption">⚪ Білий (Світла зона)</option>
+                        <option value="black">⚫ Чорний (Обидві зони)</option>
+                        <option value="red">🔴 Червоний (Обидві зони)</option>
                     </select>
                     <small id="backgroundHint" style="display: none; color: #f44336; margin-top: 5px;">
                         ⚠️ Білий фон недоступний для темної зони
@@ -667,13 +860,13 @@
                 <div class="form-group photographer-choice">
                     <label>📷 Фотограф:</label>
                     <select id="photographerChoice" onchange="updatePricePreview()">
-                        <option value="client" selected>🙋 Ваш фотограф</option>
-                        <option value="studio">👨‍💼 Індивідуальна зйомка з нашим фотографом (+2000 грн/год)</option>
+                        <option value="client" selected>Ваш фотограф</option>
+                        <option value="studio">Індивідуальна зйомка з нашим фотографом (+2000 грн/год)</option>
                     </select>
                 </div>
 
                 <div class="price-display" id="pricePreview">
-                    <h3>💰 Попередня ціна:</h3>
+                    <h3>Попередня ціна:</h3>
                     <h2 id="previewPrice">0 грн</h2>
                     <div id="previewDiscount"></div>
                 </div>
@@ -686,7 +879,7 @@
 
             <!-- STEP 3: Contact Info -->
             <div id="step3" class="step-section">
-                <h4 class="step-title">3️⃣ Ваші контакти</h4>
+                <h4 class="step-title">3. Ваші контакти</h4>
 
                 <div class="form-group">
                     <label>👤 Ім'я:</label>
@@ -706,7 +899,7 @@
 
             <!-- STEP 4: Summary -->
             <div id="step4" class="step-section">
-                <h4 class="step-title">4️⃣ Підтвердження бронювання</h4>
+                <h4 class="step-title">4. Підтвердження бронювання</h4>
 
                 <div class="summary-box" id="summaryBox"></div>
 
@@ -834,10 +1027,15 @@
             showStep(1);
 
             document.getElementById('bookingModal').classList.add('active');
+
+            document.body.classList.add('modal-open');  // Заблокувати body scroll
         }
 
         function closeModal() {
             document.getElementById('bookingModal').classList.remove('active');
+
+            document.body.classList.remove('modal-open');
+
             selectedHours = [];
             selectedDate = null;
         }
@@ -920,9 +1118,9 @@
             document.getElementById(`step${stepNum}`).classList.add('active');
 
             // Scroll modal to top
-            const modalContent = document.querySelector('.modal-content');
-            if (modalContent) {
-                modalContent.scrollTop = 0;
+            const modal = document.querySelector('.modal');
+            if (modal) {
+                modal.scrollTop = 0;
             }
         }
 
@@ -1045,12 +1243,23 @@
             const phone = document.getElementById('clientPhone').value.trim();
 
             if (!name) {
-                alert('❌ Введіть ім\'я!');
+                alert('⚠️ Будь ласка, введіть ваше ім\'я!');
                 return;
             }
 
             if (!phone) {
-                alert('❌ Введіть телефон!');
+                alert('⚠️ Будь ласка, введіть номер телефону');
+                return;
+            }
+            const phoneDigits = phone.replace(/\D/g, '');
+            
+            if (phoneDigits.length < 10) {
+                alert('⚠️ Номер телефону занадто короткий. Введіть повний номер (мінімум 10 цифр)');
+                return;
+            }
+
+            if (phoneDigits.length > 13) {
+                alert('⚠️ Номер телефону занадто довгий. Перевірте правильність номера');
                 return;
             }
 
@@ -1149,7 +1358,7 @@
 
                 const result = await response.json();
                 if (result.telegram_link) {
-                    alert('✅ Бронювання створено!\n\n📱 Зараз ви будете перенаправлені в Telegram для підтвердження.');
+                    alert('✅ Бронювання створено!\n\n📱 Зараз ви будете перенаправлені в Telegram для підтвердження та оплати.');
                     window.location.href = result.telegram_link;  // ← Замість window.open()
                     // Не треба closeModal() і loadCalendar() бо сторінка закриється
                 }
