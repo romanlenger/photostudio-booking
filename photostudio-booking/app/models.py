@@ -68,6 +68,7 @@ class Booking(Base):
 
 class Booking(Base):
     __tablename__ = "bookings"
+    __table_args__ = {'extend_existing': True}
     
     # ... existing fields ...
     
