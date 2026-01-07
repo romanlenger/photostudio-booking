@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Договір публічної оферти | CLIQUE</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📸</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        /* Container */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.6s ease-out;
+        }
+
+        /* Contract Title */
+        .contract-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        /* Contract Content */
+        .contract-content {
+            color: #333;
+            line-height: 1.8;
+            font-size: 16px;
+        }
+
+        .contract-content h2 {
+            color: #667eea;
+            font-size: 22px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .contract-content h3 {
+            color: #764ba2;
+            font-size: 18px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .contract-content p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+
+        .contract-content ul {
+            margin: 15px 0;
+            padding-left: 25px;
+        }
+
+        .contract-content li {
+            margin-bottom: 10px;
+        }
+
+        .contract-content strong {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: #f8f9ff;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-bottom: 10px;
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        /* Back Button */
+        .back-button {
+            display: inline-block;
+            margin-top: 30px;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            text-align: center;
+            display: block;
+        }
+
+        .back-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Mobile */
+        @media (max-width: 768px) {
+            .container {
+                padding: 25px;
+            }
+
+            .title {
+                font-size: 24px;
+            }
+
+            .contract-title {
+                font-size: 22px;
+            }
+
+            .contract-content {
+                font-size: 15px;
+            }
+
+            .contract-content h2 {
+                font-size: 20px;
+            }
+
+            .contract-content h3 {
+                font-size: 17px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">📸</div>
+        <div class="title">CLIQUE STUDIO</div>
+        <div class="subtitle">Фотостудія у Броварах</div>
+        <div style="margin-top: 15px;">
+            <a href="/" style="color: white; text-decoration: none; opacity: 0.85; font-size: 0.9em; transition: opacity 0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">
+                На головну сторінку
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1 class="contract-title">Договір публічної оферти</h1>
+        
+        <div class="contract-content">
+            <p><strong>Дата публікації:</strong> 07.01.2026</p>
+            
+            <h2>1. Загальні положення</h2>
+            <p>Цей Договір публічної оферти (далі — «Договір») є офіційною пропозицією фотостудії CLIQUE STUDIO (далі — «Виконавець») укласти договір про надання послуг оренди фотостудії та супутніх послуг.</p>
+            
+            <p>Договір вважається укладеним з моменту внесення Замовником передоплати за бронювання.</p>
+            
+            <div class="info-box">
+                <strong>📍 Адреса студії:</strong>
+                м. Бровари, Київська область<br>
+                📞 Контакти: Telegram @clique_admin Телефон +380 96 009 30 32<br>
+                🌐 Сайт: clique-photostudio.com
+            </div>
+
+            <h2>2. Предмет договору</h2>
+            <p>Виконавець зобов'язується надати Замовнику наступні послуги:</p>
+            <ul>
+                <li>Оренда фотостудії на узгоджений час</li>
+                <li>Надання студійного обладнання (фони, освітлення, реквізит)</li>
+                <li>Послуги студійного фотографа (за вибором Замовника)</li>
+                <li>Додаткові послуги згідно прайс-листу</li>
+            </ul>
+
+            <h2>3. Вартість послуг</h2>
+            <p>Вартість послуг визначається діючим на момент бронювання прайс-листом:</p>
+            <ul>
+                <li><strong>Оренда студії:</strong> 1000 грн/год</li>
+                <li><strong>З фотографом студії(індивідуальна зйомка):</strong> 3000 грн/год</li>
+                <li><strong>Знижка при оренді 3+ години:</strong> 10%</li>
+            </ul>
+            
+            <p>Додаткові послуги (білий фон, прапор, додаткові особи, тварини) оплачуються згідно прайсу.</p>
+
+            <h2>4. Порядок оплати</h2>
+            <h3>4.1. Передоплата</h3>
+            <p>Для підтвердження бронювання Замовник вносить передоплату у розмірі <strong>повної вартості оренди</strong>.</p>
+            
+            <h3>4.2. Реквізити для оплати</h3>
+            <p>Оплата здійснюється на картку ПриватБанку. Реквізити надаються в Telegram-боті після підтвердження бронювання.</p>
+            
+            <p><strong>⚠️ Важливо:</strong> Оплата за реквізитами можлива тільки для фізичних осіб!</p>
+
+            <h3>4.3. Підтвердження оплати</h3>
+            <p>Після оплати Замовник надсилає скріншот квитанції в чат-бот. Бронювання вважається оплаченим після підтвердження надходження коштів Виконавцем.</p>
+
+            <h2>5. Бронювання та скасування</h2>
+            <h3>5.1. Порядок бронювання</h3>
+            <ul>
+                <li>Бронювання здійснюється через Telegram-бот або сайт</li>
+                <li>Замовник обирає дату, час, послуги</li>
+                <li>Після підтвердження Замовником деталей формується бронювання</li>
+                <li>Замовник вносить передоплату протягом 24 годин</li>
+            </ul>
+
+            <h3>5.2. Скасування бронювання</h3>
+            <p><strong>Замовником:</strong></p>
+            <ul>
+                <li>При скасуванні <strong>за 24+ години</strong> до початку — передоплата повертається 100%</li>
+                <li>При скасуванні <strong>менше ніж за 24 години</strong> — передоплата не повертається</li>
+            </ul>
+            
+            <p><strong>Виконавцем:</strong></p>
+            <ul>
+                <li>У разі форс-мажору або технічних проблем — передоплата повертається 100%</li>
+                <li>Виконавець зобов'язується повідомити Замовника не пізніше ніж за 2 години до початку</li>
+            </ul>
+
+            <h2>6. Права та обов'язки сторін</h2>
+            <h3>6.1. Виконавець зобов'язується:</h3>
+            <ul>
+                <li>Надати студію та обладнання в робочому стані</li>
+                <li>Забезпечити чистоту приміщення</li>
+                <li>Надати технічну підтримку під час зйомки</li>
+                <li>Зберігати конфіденційність даних Замовника</li>
+            </ul>
+
+            <h3>6.2. Замовник зобов'язується:</h3>
+            <ul>
+                <li>Прибути вчасно (толерантність ±15 хвилин)</li>
+                <li>Дотримуватись правил користування студією та обладнанням</li>
+                <li>Бережно ставитись до майна студії</li>
+                <li>Відшкодувати вартість пошкодженого обладнання</li>
+                <li>Не перевищувати узгоджену кількість учасників зйомки</li>
+            </ul>
+
+            <h2>7. Правила студії</h2>
+            <div class="info-box">
+                <strong>📋 Обов'язкові правила:</strong>
+                <ul style="margin-top: 10px;">
+                    <li>⏰ Прибувати вчасно</li>
+                    <li>👥 Максимум 4 особи без доплати</li>
+                    <li>💰 За пошкодження обладнання — відповідальність Замовника</li>
+                    <li>🚭 Заборонено курити в приміщенні</li>
+                    <li>🐾 1 тварина без доплати, наступні — +100 грн</li>
+                    <li>🎨 Використовувати реквізит акуратно</li>
+                    <li>🧹 Залишити студію в чистоті</li>
+                </ul>
+            </div>
+
+            <h2>8. Відповідальність</h2>
+            <h3>8.1. Замовник несе відповідальність за:</h3>
+            <ul>
+                <li>Пошкодження обладнання та майна студії</li>
+                <li>Порушення правил користування студією</li>
+                <li>Травми третіх осіб з вини Замовника або його гостей</li>
+            </ul>
+
+            <h3>8.2. Виконавець не несе відповідальності за:</h3>
+            <ul>
+                <li>Якість фотографій, зроблених Замовником або його фотографом</li>
+                <li>Втрату особистих речей Замовника</li>
+                <li>Форс-мажорні обставини (відключення електроенергії, стихійне лихо, тощо)</li>
+            </ul>
+
+            <h2>9. Форс-мажор</h2>
+            <p>Сторони звільняються від відповідальності за невиконання зобов'язань, якщо це сталося внаслідок обставин непереборної сили (форс-мажор): стихійне лихо, війна, теракти, відключення електроенергії, інші обставини, які не залежать від волі сторін.</p>
+            
+            <p>У разі настання форс-мажорних обставин, Виконавець зобов'язується повідомити Замовника та повернути передоплату в повному обсязі або перенести бронювання на інший час.</p>
+
+            <h2>10. Конфіденційність</h2>
+            <p>Виконавець зобов'язується зберігати конфіденційність персональних даних Замовника та не передавати їх третім особам без згоди Замовника, за винятком випадків, передбачених законодавством України.</p>
+            
+            <p>Замовник надає згоду на обробку персональних даних шляхом здійснення бронювання.</p>
+
+            <h2>11. Вирішення спорів</h2>
+            <p>Усі спори та розбіжності, що виникають між сторонами, вирішуються шляхом переговорів. У разі недосягнення згоди, спори вирішуються в судовому порядку згідно з законодавством України.</p>
+
+            <h2>12. Прикінцеві положення</h2>
+            <p>Цей Договір набирає чинності з моменту його публікації на сайті та діє до моменту відкликання або заміни новою редакцією.</p>
+            
+            <p>Виконавець має право вносити зміни до Договору в односторонньому порядку, публікуючи нову редакцію на сайті. Зміни набувають чинності з моменту публікації.</p>
+            
+            <p>Бронювання, здійснені до внесення змін, регулюються редакцією Договору, чинною на момент бронювання.</p>
+
+            <div class="info-box" style="margin-top: 40px;">
+                <strong>📞 Контактна інформація:</strong>
+                <p style="margin-top: 10px; margin-bottom: 5px;">
+                    <strong>Фотостудія CLIQUE STUDIO</strong><br>
+                    📍 м. Бровари, Київська область<br>
+                    💬 Telegram: @clique_admin<br>
+                    🌐 clique-photostudio.com<br>
+                    📅 Дата публікації: 07.01.2026
+                </p>
+            </div>
+
+            <p style="margin-top: 30px; text-align: center; color: #999; font-size: 14px;">
+                Акцептуючи даний Договір шляхом внесення передоплати, Замовник підтверджує, що ознайомлений з усіма умовами та погоджується з ними.
+            </p>
+        </div>
+
+        <a href="/" class="back-button">⬅️ Повернутись на головну</a>
+    </div>
+</body>
+</html>

@@ -253,6 +253,8 @@ async def button_callback(update: Update, context):
             purpose = f"Бронювання {formatted_date} {hours_str}"
             await query.answer(f"📝 Призначення: {purpose}", show_alert=True)
 
+# Замінити функцію confirm_booking в bot.py
+
 async def confirm_booking(query, context, first_booking_id):
     """Confirm booking and show payment details"""
     db = get_db()
@@ -320,17 +322,20 @@ async def confirm_booking(query, context, first_booking_id):
 Призначення:
 <code>{purpose}</code>
 
+⚠️ <b>Оплата за реквізитами тільки для фіз. осіб!</b>
+
 ━━━━━━━━━━━━━━━━
 
 📸 <b>Після оплати надішліть скріншот квитанції в цей чат</b>
 
 💡 Натисніть на номер картки або призначення щоб скопіювати{photographer_contact}"""
         
-        # Copy buttons
+        # Copy buttons + Contract button
         date_str = first_booking.booking_date.strftime('%Y%m%d')
         keyboard = [
             [InlineKeyboardButton("📋 Скопіювати картку", callback_data="copy_card")],
-            [InlineKeyboardButton("📝 Скопіювати призначення", callback_data=f"copy_purpose_{date_str}_{hours_display.replace(':', '')}")]
+            [InlineKeyboardButton("📝 Скопіювати призначення", callback_data=f"copy_purpose_{date_str}_{hours_display.replace(':', '')}")],
+            [InlineKeyboardButton("📄 Договір публічної оферти", url=f"{WEBSITE_URL}/contract.html")]
         ]
         
         # Update original message
