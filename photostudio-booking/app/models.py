@@ -65,3 +65,12 @@ class Booking(Base):
     __table_args__ = (
         UniqueConstraint('booking_date', 'booking_hour', name='unique_booking_slot'),
     )
+
+class Booking(Base):
+    __tablename__ = "bookings"
+    
+    # ... existing fields ...
+    
+    # ADD THESE:
+    monobank_invoice_id = Column(String, nullable=True)  # ID рахунку від Monobank
+    payment_method = Column(String, default='manual')  # 'online' or 'manual'

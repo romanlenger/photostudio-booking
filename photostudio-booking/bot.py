@@ -10,6 +10,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.database import SessionLocal
 from app.models import Booking, Client
+from monobank import monobank
 
 # ========== CONFIGURATION ==========
 
@@ -253,7 +254,18 @@ async def button_callback(update: Update, context):
             purpose = f"Бронювання {formatted_date} {hours_str}"
             await query.answer(f"📝 Призначення: {purpose}", show_alert=True)
 
-# Замінити функцію confirm_booking в bot.py
+    elif data.startswith("pay_online_"):
+        booking_id = int(data.split("_")[2])
+        await handle_pay_online(query, context, booking_id)
+    
+    elif data.startswith("pay_manual_"):
+        booking_id = int(data.split("_")[2])
+        await handle_pay_manual(query, context, booking_id)
+    
+    elif data.startswith("back_to_payment_"):
+        booking_id = int(data.split("_")[3])
+        await handle_back_to_payment(query, context, booking_id)
+
 
 async def confirm_booking(query, context, first_booking_id):
     """Confirm booking and show payment details"""
@@ -312,30 +324,27 @@ async def confirm_booking(query, context, first_booking_id):
 
 ━━━━━━━━━━━━━━━━
 
-💳 <b>Реквізити для оплати:</b>
-
-<code>{CARD_DISPLAY}</code>
-{CARDHOLDER_NAME}
+💳 <b>Оберіть спосіб оплати:</b>
 
 <b>Сума: {first_booking.total_price} грн</b>
 
-Призначення:
-<code>{purpose}</code>
-
-⚠️ <b>Оплата за реквізитами тільки для фіз. осіб!</b>
-
 ━━━━━━━━━━━━━━━━
 
-📸 <b>Після оплати надішліть скріншот квитанції в цей чат</b>
+💡 <b>Онлайн-оплата:</b>
+- Миттєве підтвердження
+- Картою будь-якого банку
+- Google Pay / Apple Pay
 
-💡 Натисніть на номер картки або призначення щоб скопіювати{photographer_contact}"""
+📋 <b>Реквізити:</b>
+- Тільки для фізичних осіб
+- Підтвердження після скріншоту{photographer_contact}"""
         
         # Copy buttons + Contract button
         date_str = first_booking.booking_date.strftime('%Y%m%d')
         keyboard = [
-            [InlineKeyboardButton("📋 Скопіювати картку", callback_data="copy_card")],
-            [InlineKeyboardButton("📝 Скопіювати призначення", callback_data=f"copy_purpose_{date_str}_{hours_display.replace(':', '')}")],
-            [InlineKeyboardButton("📄 Договір публічної оферти", url=f"{WEBSITE_URL}/static/contract.html")]
+            [InlineKeyboardButton("💳 Оплатити онлайн (Monobank)", callback_data=f"pay_online_{first_booking_id}")],
+            [InlineKeyboardButton("📋 Оплата на реквізити", callback_data=f"pay_manual_{first_booking_id}")],
+            [InlineKeyboardButton("📄 Договір публічної оферти", url=f"{WEBSITE_URL}/contract.html")]
         ]
         
         # Update original message
@@ -404,6 +413,269 @@ ID: #{first_booking_id}
         
     finally:
         db.close()
+
+
+async def handle_pay_online(query, context, booking_id):
+    """Handle online payment via Monobank"""
+    db = get_db()
+    
+    try:
+        # Get booking
+        booking = db.query(Booking).filter(Booking.id == booking_id).first()
+        
+        if not booking:
+            await query.edit_message_text("❌ Бронювання не знайдено")
+            return
+        
+        # Get all bookings in group
+        group_id = booking.booking_group_id
+        if group_id:
+            bookings = db.query(Booking).filter(
+                Booking.booking_group_id == group_id
+            ).all()
+        else:
+            bookings = [booking]
+        
+        # Get client
+        client = db.query(Client).filter(Client.id == booking.client_id).first()
+        
+        # Collect hours
+        hours = sorted([b.booking_hour for b in bookings])
+        hours_display = format_hours_display(hours)
+        
+        # Create description
+        description = f"Бронювання {booking.booking_date.strftime('%d.%m.%Y')} {hours_display}"
+        
+        # Create invoice in Monobank
+        try:
+            invoice_data = await monobank.create_invoice(
+                amount=booking.total_price,
+                booking_id=booking_id,
+                client_name=client.name,
+                description=description
+            )
+            
+            # Save invoice ID to booking
+            booking.monobank_invoice_id = invoice_data['invoiceId']
+            booking.payment_method = 'online'
+            db.commit()
+            
+            # Send payment link
+            payment_url = invoice_data['pageUrl']
+            
+            message = f"""💳 <b>Рахунок створено!</b>
+
+<b>Сума: {booking.total_price} грн</b>
+Дійсний: 24 години
+
+Після оплати бронювання підтвердиться автоматично!
+
+💡 Можна платити карткою будь-якого банку України"""
+            
+            keyboard = [
+                [InlineKeyboardButton("🔗 Перейти до оплати", url=payment_url)],
+                [InlineKeyboardButton("◀️ Назад до вибору оплати", callback_data=f"back_to_payment_{booking_id}")]
+            ]
+            
+            await query.edit_message_text(
+                message,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            
+            # Notify admins
+            username = query.from_user.username
+            tg = f"@{username}" if username else f"ID: {query.from_user.id}"
+            
+            admin_message = f"""💳 <b>Створено онлайн-рахунок</b>
+
+ID: #{booking_id}
+👤 {client.name}
+📞 {client.phone}
+💬 {tg}
+
+📅 {booking.booking_date.strftime('%d.%m.%Y')}
+🕐 {hours_display} ({len(hours)} год)
+
+💰 Сума: {booking.total_price} грн
+
+⏳ Очікуємо оплату через Monobank..."""
+            
+            await notify_admins(context, admin_message)
+            
+        except Exception as e:
+            error_message = f"""❌ <b>Помилка створення рахунку</b>
+
+Виникла технічна помилка при створенні рахунку.
+
+Будь ласка, спробуйте:
+- Оплату на реквізити
+- Або напишіть нам: @lonkilin
+
+Помилка: {str(e)}"""
+            
+            keyboard = [
+                [InlineKeyboardButton("📋 Оплата на реквізити", callback_data=f"pay_manual_{booking_id}")],
+                [InlineKeyboardButton("💬 Написати підтримку", url="https://t.me/lonkilin")]
+            ]
+            
+            await query.edit_message_text(
+                error_message,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='HTML'
+            )
+            
+            # Notify admins about error
+            await notify_admins(context, f"⚠️ Помилка Monobank для бронювання #{booking_id}: {str(e)}")
+    
+    finally:
+        db.close()
+
+
+async def handle_pay_manual(query, context, booking_id):
+    """Handle manual payment via bank transfer"""
+    db = get_db()
+    
+    try:
+        # Get booking
+        booking = db.query(Booking).filter(Booking.id == booking_id).first()
+        
+        if not booking:
+            await query.edit_message_text("❌ Бронювання не знайдено")
+            return
+        
+        # Get all bookings in group
+        group_id = booking.booking_group_id
+        if group_id:
+            bookings = db.query(Booking).filter(
+                Booking.booking_group_id == group_id
+            ).all()
+        else:
+            bookings = [booking]
+        
+        # Collect hours
+        hours = sorted([b.booking_hour for b in bookings])
+        hours_display = format_hours_display(hours)
+        
+        # Payment purpose
+        purpose = f"Бронювання {booking.booking_date.strftime('%d.%m.%Y')} {hours_display}"
+        
+        # Update payment method
+        booking.payment_method = 'manual'
+        db.commit()
+        
+        # Manual payment message
+        date_str = booking.booking_date.strftime('%Y%m%d')
+        
+        payment_message = f"""💳 <b>Реквізити для оплати:</b>
+
+<code>{CARD_DISPLAY}</code>
+{CARDHOLDER_NAME}
+
+<b>Сума: {booking.total_price} грн</b>
+
+Призначення:
+<code>{purpose}</code>
+
+⚠️ <b>Оплата за реквізитами тільки для фіз. осіб!</b>
+
+━━━━━━━━━━━━━━━━
+
+📸 <b>Після оплати надішліть скріншот квитанції в цей чат</b>
+
+💡 Натисніть на номер картки або призначення щоб скопіювати"""
+        
+        # Copy buttons
+        keyboard = [
+            [InlineKeyboardButton("📋 Скопіювати картку", callback_data="copy_card")],
+            [InlineKeyboardButton("📝 Скопіювати призначення", callback_data=f"copy_purpose_{date_str}_{hours_display.replace(':', '')}")],
+            [InlineKeyboardButton("◀️ Назад до вибору оплати", callback_data=f"back_to_payment_{booking_id}")]
+        ]
+        
+        await query.edit_message_text(
+            payment_message,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+    
+    finally:
+        db.close()
+
+
+async def handle_back_to_payment(query, context, booking_id):
+    """Go back to payment selection"""
+    db = get_db()
+    
+    try:
+        booking = db.query(Booking).filter(Booking.id == booking_id).first()
+        
+        if not booking:
+            await query.edit_message_text("❌ Бронювання не знайдено")
+            return
+        
+        # Get all bookings in group
+        group_id = booking.booking_group_id
+        if group_id:
+            bookings = db.query(Booking).filter(
+                Booking.booking_group_id == group_id
+            ).all()
+        else:
+            bookings = [booking]
+        
+        # Collect hours
+        hours = sorted([b.booking_hour for b in bookings])
+        hours_display = format_hours_display(hours)
+        
+        # Format services
+        services_summary = format_services_summary(booking)
+        
+        # Check discount
+        discount_info = ""
+        if len(hours) >= 3:
+            discount_info = "\n🎉 <i>Знижка 10% вже застосована!</i>"
+        
+        # Photographer contact
+        photographer_contact = ""
+        if booking.photographer_choice == 'studio':
+            photographer_contact = "\n\n💬 <b>Зв'язатись з фотографом:</b> @lonkilin"
+        
+        payment_message = f"""✅ <b>Підтверджено!</b>
+
+{services_summary}{discount_info}
+
+━━━━━━━━━━━━━━━━
+
+💳 <b>Оберіть спосіб оплати:</b>
+
+<b>Сума: {booking.total_price} грн</b>
+
+━━━━━━━━━━━━━━━━
+
+💡 <b>Онлайн-оплата:</b>
+- Миттєве підтвердження
+- Картою будь-якого банку
+- Google Pay / Apple Pay
+
+📋 <b>Реквізити:</b>
+- Тільки для фізичних осіб
+- Підтвердження після скріншоту{photographer_contact}"""
+        
+        # Payment options
+        keyboard = [
+            [InlineKeyboardButton("💳 Оплатити онлайн (Monobank)", callback_data=f"pay_online_{booking_id}")],
+            [InlineKeyboardButton("📋 Оплата на реквізити", callback_data=f"pay_manual_{booking_id}")],
+            [InlineKeyboardButton("📄 Договір публічної оферти", url=f"{WEBSITE_URL}/contract.html")]
+        ]
+        
+        await query.edit_message_text(
+            payment_message,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='HTML'
+        )
+    
+    finally:
+        db.close()
+
 
 async def cancel_booking(query, context, first_booking_id):
     """Cancel booking"""
