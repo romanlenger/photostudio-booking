@@ -27,7 +27,6 @@
         }
 
         header {
-            /* display: flex; */
             background: linear-gradient(135deg, #000000 0%, #333333 100%);
             color: white;
             padding: 20px;
@@ -36,7 +35,7 @@
             top: 0;
             left: 50%;
             transform: translateX(-50%);
-            width: calc(100%);
+            width: calc(100% - 40px);
             max-width: 1200px;
             z-index: 1001;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
@@ -60,7 +59,7 @@
             background: #f8f9fa;
             padding: 20px;
             position: fixed;
-            top: 135px;
+            top: 97px;
             left: 50%;
             transform: translateX(-50%);
             width: calc(100%);
@@ -102,7 +101,7 @@
 
         .container {
             max-width: 1200px;
-            margin-top: 200px;
+            margin-top: 177px;
             margin-left: auto;
             margin-right: auto;
             margin-bottom: 0;
@@ -480,7 +479,7 @@
             }
 
             .calendar-header {
-                top: 122px;
+                top: 82px;
                 padding: 15px;
             }
 
@@ -494,7 +493,7 @@
             }
 
             .container {
-                margin-top: 187px;
+                margin-top: 147px;
             }
 
             .calendar {
@@ -557,7 +556,7 @@
         <h1>CLIQUE</h1>
         <p class="subtitle">Система бронювання часу</p>
         <div style="margin-top: 15px;">
-            <a href="static/contract.html" style="color: white; text-decoration: none; opacity: 0.85; font-size: 0.9em; transition: opacity 0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">
+            <a href="/contract.html" style="color: white; text-decoration: none; opacity: 0.85; font-size: 0.9em; transition: opacity 0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">
                 📄 Договір публічної оферти
             </a>
         </div>
@@ -918,7 +917,7 @@
                 step.classList.remove('active');
             });
             document.getElementById(`step${stepNum}`).classList.add('active');
-
+            
             // Scroll modal to top
             const modalContent = document.querySelector('.modal-content');
             if (modalContent) {
