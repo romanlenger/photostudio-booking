@@ -1151,9 +1151,7 @@
 
                 if (result.telegram_link) {
                     alert('✅ Бронювання створено!\n\n📱 Зараз ви будете перенаправлені в Telegram для підтвердження.');
-                    window.open(result.telegram_link, '_blank');
-                    closeModal();
-                    loadCalendar();
+                    window.location.href = result.telegram_link;  // ← Замість window.open()
                 }
             } catch (error) {
                 alert('❌ Помилка: ' + error.message);
