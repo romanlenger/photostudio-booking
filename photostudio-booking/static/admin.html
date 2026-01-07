@@ -1438,10 +1438,14 @@
         }
 
         async function loadTodayBookings() {
-            const today = new Date().toISOString().split('T')[0];
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${year}-${month}-${day}`;
             
             try {
-                const response = await fetch(`/api/admin/bookings/list?start_date=${today}&end_date=${today}`, {
+                const response = await fetch(`/api/admin/bookings/list?start_date=${todayStr}&end_date=${todayStr}`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 const bookings = await response.json();
