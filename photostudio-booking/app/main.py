@@ -482,10 +482,33 @@ async def monobank_webhook(request: Request):
                     hours = sorted([b.booking_hour for b in bookings])
                     hours_display = format_hours_display(hours)
                     
-                    # Send to client via Telegram
-                    if booking.telegram_user_id:
-                        BOT_TOKEN = os.getenv("BOT_TOKEN")
-                        if BOT_TOKEN:
+                    # Підготовка інформації про послуги
+                    services_info = []
+                    if booking.people_count:
+                        services_info.append(f"👥 Людей: {booking.people_count}")
+                    if booking.zone_choice:
+                        zone_display = {"light": "🌞 Світла", "dark": "🌙 Темна", "both": "🌓 Обидві"}.get(booking.zone_choice, booking.zone_choice)
+                        services_info.append(f"Зона: {zone_display}")
+                    if booking.animals_count:
+                        services_info.append(f"🐾 Тварин: {booking.animals_count}")
+                    if booking.background_choice and booking.background_choice != 'none':
+                        services_info.append(f"🎨 Фон: {booking.background_choice}")
+                    if booking.photographer_choice:
+                        photographer_display = {"studio": "📸 Студійний", "client": "👤 Свій"}.get(booking.photographer_choice, booking.photographer_choice)
+                        services_info.append(f"Фотограф: {photographer_display}")
+                    
+                    services_summary = "\n".join(services_info) if services_info else "Базові послуги"
+                    
+                    # Перевірка на знижку (3+ години)
+                    has_discount = len(hours) >= 3
+                    discount_info = "\n🎉 <b>Застосовано знижку за 3+ години!</b>" if has_discount else ""
+                    
+                    BOT_TOKEN = os.getenv("BOT_TOKEN")
+                    if BOT_TOKEN:
+                        bot = Bot(token=BOT_TOKEN)
+                        
+                        # 1. Відправити клієнту (якщо є telegram_user_id)
+                        if booking.telegram_user_id:
                             client_message = f"""✅ <b>Оплата отримана!</b>
 
 Дякуємо! Ваше бронювання підтверджено.
@@ -493,7 +516,7 @@ async def monobank_webhook(request: Request):
 📅 <b>Дата:</b> {booking.booking_date.strftime('%d.%m.%Y')}
 🕐 <b>Час:</b> {hours_display} ({len(hours)} год)
 
-💰 <b>Оплачено:</b> {booking.total_price} грн
+💰 <b>Оплачено:</b> {booking.total_price} грн{discount_info}
 
 ━━━━━━━━━━━━━━━━
 
@@ -506,7 +529,6 @@ async def monobank_webhook(request: Request):
 Чекаємо вас! 📸"""
                             
                             try:
-                                bot = Bot(token=BOT_TOKEN)
                                 await bot.send_message(
                                     chat_id=booking.telegram_user_id,
                                     text=client_message,
@@ -514,6 +536,69 @@ async def monobank_webhook(request: Request):
                                 )
                             except Exception as e:
                                 logging.error(f"Failed to send to client: {e}")
+                        
+                        # 2. Відправити адмінам
+                        ADMIN_IDS_STR = os.getenv("ADMIN_IDS", "")
+                        ADMIN_IDS = [int(x.strip()) for x in ADMIN_IDS_STR.split(",") if x.strip()]
+                        
+                        admin_message = f"""💰 <b>Нова оплата підтверджена!</b>
+
+📅 <b>Дата:</b> {booking.booking_date.strftime('%d.%m.%Y')}
+🕐 <b>Час:</b> {hours_display} ({len(hours)} год)
+
+👤 <b>Клієнт:</b> {client.name}
+📞 <b>Телефон:</b> {client.phone}
+
+📋 <b>Деталі:</b>
+{services_summary}
+
+💰 <b>Сума:</b> {booking.total_price} грн{discount_info}
+
+🔖 <b>Booking ID:</b> {booking_id}
+🆔 <b>Group ID:</b> {booking.booking_group_id or 'N/A'}"""
+                        
+                        for admin_id in ADMIN_IDS:
+                            try:
+                                await bot.send_message(
+                                    chat_id=admin_id,
+                                    text=admin_message,
+                                    parse_mode='HTML'
+                                )
+                            except Exception as e:
+                                logging.error(f"Failed to send to admin {admin_id}: {e}")
+                        
+                        # 3. Відправити фотографу (якщо вибрано студійного фотографа)
+                        if booking.photographer_choice == 'studio':
+                            PHOTOGRAPHER_ID_STR = os.getenv("PHOTOGRAPHER_ID", "")
+                            if PHOTOGRAPHER_ID_STR.strip():
+                                PHOTOGRAPHER_ID = int(PHOTOGRAPHER_ID_STR)
+                                
+                                photographer_message = f"""✅ <b>Оплата підтверджена!</b>
+
+📸 <b>Ваша фотосесія:</b>
+
+📅 Дата: {booking.booking_date.strftime('%d.%m.%Y')}
+🕐 Час: {hours_display} ({len(hours)} год)
+
+👤 Клієнт: {client.name}
+📞 Телефон: {client.phone}
+
+📋 <b>Деталі:</b>
+{services_summary}
+
+💰 Оплату отримано і перевірено{discount_info}
+
+🎯 <b>Будьте готові!</b>
+Клієнт чекає на вас у студії в призначений час."""
+                                
+                                try:
+                                    await bot.send_message(
+                                        chat_id=PHOTOGRAPHER_ID,
+                                        text=photographer_message,
+                                        parse_mode='HTML'
+                                    )
+                                except Exception as e:
+                                    logging.error(f"Failed to send to photographer: {e}")
                     
                     logging.info(f"Booking #{booking_id} marked as paid via Monobank")
             
