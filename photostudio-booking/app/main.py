@@ -538,7 +538,7 @@ async def monobank_webhook(request: Request):
                                 logging.error(f"Failed to send to client: {e}")
                         
                         # 2. Відправити адмінам
-                        ADMIN_IDS_STR = os.getenv("ADMIN_IDS", "")
+                        ADMIN_IDS_STR = os.getenv("TELEGRAM_ADMIN_CHAT_IDS", "")
                         ADMIN_IDS = [int(x.strip()) for x in ADMIN_IDS_STR.split(",") if x.strip()]
                         
                         admin_message = f"""💰 <b>Нова оплата підтверджена!</b>
