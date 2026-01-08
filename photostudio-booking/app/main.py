@@ -483,7 +483,6 @@ async def monobank_webhook(request: Request):
                 if booking:
                     # Update status
                     booking.status = 'paid'
-                    booking.payment_status = 'paid'
                     db.commit()
                     
                     # Get client
@@ -498,7 +497,6 @@ async def monobank_webhook(request: Request):
                         # Update all in group
                         for b in bookings:
                             b.status = 'paid'
-                            b.payment_status = 'paid'
                         db.commit()
                     else:
                         bookings = [booking]
