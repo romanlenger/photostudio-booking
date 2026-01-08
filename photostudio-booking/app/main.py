@@ -453,72 +453,50 @@ def delete_booking_group(
 
 @app.post("/api/monobank/webhook")
 async def monobank_webhook(request: Request):
-    """
-    Webhook від Monobank коли клієнт оплатив
-    """
+    """Webhook від Monobank коли клієнт оплатив"""
     try:
-        # Отримати дані від Monobank
         webhook_data = await request.json()
-        
         logging.info(f"Monobank webhook received: {webhook_data}")
         
-        # Перевірити підпис (в продакшні обов'язково!)
-        # monobank.verify_signature(webhook_data)
-        
-        # Отримати статус
         status = webhook_data.get('status')
-        invoice_id = webhook_data.get('invoiceId')
-        reference = webhook_data.get('reference')  # booking_id
+        reference = webhook_data.get('reference')
         
         if status == 'success':
-            # Оплата успішна!
             booking_id = int(reference)
-            
-            # Оновити статус бронювання
             db = next(get_db())
+            
             try:
-                # Get booking
-                booking = booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+                booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
                 
                 if booking:
-                    # Update status
                     booking.status = 'paid'
-                    db.commit()
                     
-                    # Get client
-                    client = db.query(models.Client).filter(models.Client.id == booking.client_id).first()
-                    
-                    # Get all bookings in group
                     group_id = booking.booking_group_id
                     if group_id:
                         bookings = db.query(models.Booking).filter(
-                            Booking.booking_group_id == group_id
+                            models.Booking.booking_group_id == group_id
                         ).all()
-                        # Update all in group
                         for b in bookings:
                             b.status = 'paid'
-                        db.commit()
                     else:
                         bookings = [booking]
                     
-                    # Collect hours
+                    db.commit()
+                    
+                    client = db.query(models.Client).filter(models.Client.id == booking.client_id).first()
                     hours = sorted([b.booking_hour for b in bookings])
                     hours_display = format_hours_display(hours)
                     
-                    # Format services
-                    services_summary = format_services_summary(booking)
-                    
-                    # Send confirmation to client
-                    from telegram_service import bot
-                    
-                    client_message = f"""✅ <b>Оплата отримана!</b>
+                    # Send to client
+                    if booking.telegram_user_id:
+                        from app.telegram_service import bot_instance
+                        
+                        client_message = f"""✅ <b>Оплата отримана!</b>
 
 Дякуємо! Ваше бронювання підтверджено.
 
 📅 <b>Дата:</b> {booking.booking_date.strftime('%d.%m.%Y')}
 🕐 <b>Час:</b> {hours_display} ({len(hours)} год)
-
-{services_summary}
 
 💰 <b>Оплачено:</b> {booking.total_price} грн
 
@@ -530,37 +508,19 @@ async def monobank_webhook(request: Request):
 
 📞 <b>Контакт:</b> @clique_admin
 
-💡 Нагадування прийде за 24 год та за 3 год до сесії
-
 Чекаємо вас! 📸"""
-                    
-                    await bot.send_message(
-                        chat_id=client.telegram_id,
-                        text=client_message,
-                        parse_mode='HTML'
-                    )
-                    
-                    # Notify admins
-                    admin_message = f"""✅ <b>Оплачено онлайн!</b>
-
-ID: #{booking_id}
-👤 {client.name}
-📞 {client.phone}
-
-📅 {booking.booking_date.strftime('%d.%m.%Y')}
-🕐 {hours_display} ({len(hours)} год)
-
-{services_summary}
-
-💰 Сума: {booking.total_price} грн
-💳 Спосіб: Monobank (онлайн)
-
-✅ Бронювання підтверджено автоматично"""
-                    
-                    await notify_admins(bot, admin_message)
+                        
+                        try:
+                            await bot_instance.send_message(
+                                chat_id=booking.telegram_user_id,
+                                text=client_message,
+                                parse_mode='HTML'
+                            )
+                        except Exception as e:
+                            logging.error(f"Failed to send to client: {e}")
                     
                     logging.info(f"Booking #{booking_id} marked as paid via Monobank")
-                
+            
             finally:
                 db.close()
         
