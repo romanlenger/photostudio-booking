@@ -587,8 +587,6 @@ async def handle_pay_manual(query, context, booking_id):
         
         # Copy buttons
         keyboard = [
-            [InlineKeyboardButton("📋 Скопіювати картку", callback_data="copy_card")],
-            [InlineKeyboardButton("📝 Скопіювати призначення", callback_data=f"copy_purpose_{date_str}_{hours_display.replace(':', '')}")],
             [InlineKeyboardButton("◀️ Назад до вибору оплати", callback_data=f"back_to_payment_{booking_id}")]
         ]
         
