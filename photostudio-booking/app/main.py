@@ -124,6 +124,7 @@ async def create_booking(
             telegram_notifier.send_new_booking_notification,
             client_name=booking.name,
             client_phone=booking.phone,
+            booking_hour=hours_display,
             booking_date=str(booking.booking_date),
             booking_id=first_booking_id,
         )
