@@ -9,6 +9,7 @@ import calendar
 import os
 import uuid
 import logging
+from telegram import Bot
 
 from . import models, schemas
 from .database import engine, get_db
@@ -117,7 +118,7 @@ async def create_booking(
         first_booking_id = booking_ids[0]
         bot_username = os.getenv("BOT_USERNAME", "clique_booking_bot")
         telegram_link = f"https://t.me/{bot_username}?start=booking_{first_booking_id}"
-        
+
         # Відправити сповіщення адміну (в фоновому режимі)
         hours_display = format_hours_display(booking.booking_hours)
         background_tasks.add_task(
@@ -481,11 +482,11 @@ async def monobank_webhook(request: Request):
                     hours = sorted([b.booking_hour for b in bookings])
                     hours_display = format_hours_display(hours)
                     
-                    # Send to client
+                    # Send to client via Telegram
                     if booking.telegram_user_id:
-                        from bot import app as bot_instance
-                        
-                        client_message = f"""✅ <b>Оплата отримана!</b>
+                        BOT_TOKEN = os.getenv("BOT_TOKEN")
+                        if BOT_TOKEN:
+                            client_message = f"""✅ <b>Оплата отримана!</b>
 
 Дякуємо! Ваше бронювання підтверджено.
 
@@ -503,15 +504,16 @@ async def monobank_webhook(request: Request):
 📞 <b>Контакт:</b> @clique_admin
 
 Чекаємо вас! 📸"""
-                        
-                        try:
-                            await bot_instance.send_message(
-                                chat_id=booking.telegram_user_id,
-                                text=client_message,
-                                parse_mode='HTML'
-                            )
-                        except Exception as e:
-                            logging.error(f"Failed to send to client: {e}")
+                            
+                            try:
+                                bot = Bot(token=BOT_TOKEN)
+                                await bot.send_message(
+                                    chat_id=booking.telegram_user_id,
+                                    text=client_message,
+                                    parse_mode='HTML'
+                                )
+                            except Exception as e:
+                                logging.error(f"Failed to send to client: {e}")
                     
                     logging.info(f"Booking #{booking_id} marked as paid via Monobank")
             
