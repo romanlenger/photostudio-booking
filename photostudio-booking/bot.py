@@ -342,7 +342,7 @@ async def confirm_booking(query, context, first_booking_id):
         # Copy buttons + Contract button
         date_str = first_booking.booking_date.strftime('%Y%m%d')
         keyboard = [
-            [InlineKeyboardButton("💳 Оплатити онлайн (Monobank)", callback_data=f"pay_online_{first_booking_id}")],
+            [InlineKeyboardButton("💳 Оплата карткою (Google Pay, Apple Pay)", callback_data=f"pay_online_{first_booking_id}")],
             [InlineKeyboardButton("📋 Оплата на реквізити", callback_data=f"pay_manual_{first_booking_id}")],
             [InlineKeyboardButton("📄 Договір публічної оферти", url=f"{WEBSITE_URL}/static/contract.html")]
         ]

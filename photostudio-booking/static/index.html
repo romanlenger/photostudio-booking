@@ -1150,7 +1150,14 @@
             const peopleExtra = Math.max(0, people - 4) * 100;
 
             const zone = document.getElementById('zoneChoice').value;
-            const zoneExtra = zone === 'both' ? 500 : 0;
+            let zoneExtra = 0;
+            if (zone === 'both') {
+                if (hoursCount === 1) {
+                    zoneExtra = 500;  // Тільки за 1 годину доплата
+                } else {
+                    zoneExtra = 0;  // 2+ години - безкоштовно!
+                }
+            }
 
             const animals = parseInt(document.getElementById('animalsCount').value);
             const animalsExtra = Math.max(0, animals - 1) * 100;
