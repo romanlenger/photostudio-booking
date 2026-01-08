@@ -126,11 +126,6 @@ async def create_booking(
             client_phone=booking.phone,
             booking_date=str(booking.booking_date),
             booking_id=first_booking_id,
-            zone_choice=booking.zone_choice,
-            animals_count=booking.animals_count,
-            background_choice=booking.background_choice,
-            photographer_choice=booking.photographer_choice,
-            total_price=booking.total_price
         )
         
         # Повернути відповідь
