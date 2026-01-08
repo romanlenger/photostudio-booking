@@ -126,7 +126,6 @@ async def create_booking(
             client_phone=booking.phone,
             booking_date=str(booking.booking_date),
             booking_id=first_booking_id,
-            people_count=booking.people_count,
             zone_choice=booking.zone_choice,
             animals_count=booking.animals_count,
             background_choice=booking.background_choice,

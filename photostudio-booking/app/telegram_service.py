@@ -44,7 +44,7 @@ class TelegramNotifier:
         client_name: str,
         client_phone: str,
         booking_date: str,
-        booking_hour: int,
+        booking_hour: str,
         booking_id: int
     ) -> bool:
         """Відправити сповіщення про нове бронювання"""
@@ -107,7 +107,7 @@ class TelegramNotifier:
         self,
         client_name: str,
         booking_date: str,
-        booking_hour: int,
+        booking_hour: str,
         booking_id: int
     ) -> bool:
         """Відправити сповіщення про скасування бронювання"""
