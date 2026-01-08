@@ -483,7 +483,7 @@ async def monobank_webhook(request: Request):
                     
                     # Send to client
                     if booking.telegram_user_id:
-                        from app.telegram_service import app as bot_instance
+                        from bot import app as bot_instance
                         
                         client_message = f"""✅ <b>Оплата отримана!</b>
 
