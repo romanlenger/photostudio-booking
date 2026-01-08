@@ -115,7 +115,7 @@ async def create_booking(
         
         # Створити Telegram deep link (використовуємо ID першого бронювання)
         first_booking_id = booking_ids[0]
-        bot_username = os.getenv("BOT_USERNAME", "your_bot_username")
+        bot_username = os.getenv("BOT_USERNAME", "clique_booking_bot")
         telegram_link = f"https://t.me/{bot_username}?start=booking_{first_booking_id}"
         
         # Відправити сповіщення адміну (в фоновому режимі)
