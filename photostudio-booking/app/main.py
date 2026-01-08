@@ -478,7 +478,7 @@ async def monobank_webhook(request: Request):
             db = next(get_db())
             try:
                 # Get booking
-                booking = db.query(Booking).filter(Booking.id == booking_id).first()
+                booking = booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
                 
                 if booking:
                     # Update status
@@ -487,12 +487,12 @@ async def monobank_webhook(request: Request):
                     db.commit()
                     
                     # Get client
-                    client = db.query(Client).filter(Client.id == booking.client_id).first()
+                    client = db.query(models.Client).filter(models.Client.id == booking.client_id).first()
                     
                     # Get all bookings in group
                     group_id = booking.booking_group_id
                     if group_id:
-                        bookings = db.query(Booking).filter(
+                        bookings = db.query(models.Booking).filter(
                             Booking.booking_group_id == group_id
                         ).all()
                         # Update all in group

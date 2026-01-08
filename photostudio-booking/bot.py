@@ -43,8 +43,8 @@ WEBSITE_URL = os.getenv("WEBSITE_URL", "http://192.168.88.26:8000")
 INSTAGRAM_URL = os.getenv("INSTAGRAM_URL", "https://instagram.com/clique_studio")
 
 # Payment details
-CARD_NUMBER = "UA833052990000026002000123966"
-CARD_DISPLAY = "UA833052990000026002000123966"
+CARD_NUMBER = "UA123220010000026008370040054"
+CARD_DISPLAY = "UA123220010000026008370040054"
 CARDHOLDER_NAME = "Кріпак Юлія Павлівна"
 
 # ========== DATABASE ==========
@@ -444,7 +444,7 @@ async def handle_pay_online(query, context, booking_id):
         hours_display = format_hours_display(hours)
         
         # Create description
-        description = f"Бронювання {booking.booking_date.strftime('%d.%m.%Y')} {hours_display}"
+        description = f"Оплата послуг фотостудії, фіз. особа {booking.booking_date.strftime('%d.%m.%Y')} {hours_display}"
         
         # Create invoice in Monobank
         try:
@@ -558,7 +558,7 @@ async def handle_pay_manual(query, context, booking_id):
         hours_display = format_hours_display(hours)
         
         # Payment purpose
-        purpose = f"Бронювання {booking.booking_date.strftime('%d.%m.%Y')} {hours_display}"
+        purpose = f"Оплата послуг фотостудії, фіз. особа {booking.booking_date.strftime('%d.%m.%Y')} {hours_display}"
         
         # Update payment method
         booking.payment_method = 'manual'
@@ -587,6 +587,8 @@ async def handle_pay_manual(query, context, booking_id):
         
         # Copy buttons
         keyboard = [
+            [InlineKeyboardButton("📋 Скопіювати картку", callback_data="copy_card")],
+            [InlineKeyboardButton("📝 Скопіювати призначення", callback_data=f"copy_purpose_{date_str}_{hours_display.replace(':', '')}")],
             [InlineKeyboardButton("◀️ Назад до вибору оплати", callback_data=f"back_to_payment_{booking_id}")]
         ]
         

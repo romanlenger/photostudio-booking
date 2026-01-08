@@ -45,7 +45,7 @@ class MonobankAPI:
             'merchantPaymInfo': {
                 'reference': str(booking_id),  # ID бронювання
                 'destination': description,
-                'comment': f'Бронювання #{booking_id} - {client_name}'
+                'comment': f'Оплата послуг фотостудії, фіз. особа #{booking_id} - {client_name}'
             },
             'redirectUrl': os.getenv('WEBSITE_URL'),  # Куди повернутись після оплати
             'webHookUrl': webhook_url,
