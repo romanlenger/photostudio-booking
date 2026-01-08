@@ -76,7 +76,7 @@ class TelegramNotifier:
 🎉 <b>Нове бронювання!</b>
 
 📅 <b>Дата:</b> {formatted_date}
-🕐 <b>Час:</b> {time_range}
+🕐 <b>Час:</b> {booking_hour}
 
 👤 <b>Клієнт:</b> {client_name}
 📞 <b>Телефон:</b> <code>{client_phone}</code>
