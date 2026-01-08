@@ -984,11 +984,10 @@ ID: #{first_booking.id}
         db.close()
 
 # ========== MAIN ==========
+app = Application.builder().token(BOT_TOKEN).build()
 
 def main():
     """Start bot"""
-    app = Application.builder().token(BOT_TOKEN).build()
-    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
