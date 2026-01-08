@@ -663,7 +663,7 @@ async def handle_back_to_payment(query, context, booking_id):
         
         # Payment options
         keyboard = [
-            [InlineKeyboardButton("💳 Оплатити онлайн (Monobank)", callback_data=f"pay_online_{booking_id}")],
+            [InlineKeyboardButton("💳 Оплата карткою (Google Pay, Apple Pay)", callback_data=f"pay_online_{booking_id}")],
             [InlineKeyboardButton("📋 Оплата на реквізити", callback_data=f"pay_manual_{booking_id}")],
             [InlineKeyboardButton("📄 Договір публічної оферти", url=f"{WEBSITE_URL}/static/contract.html")]
         ]

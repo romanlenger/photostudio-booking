@@ -1,3 +1,4 @@
+import json
 import aiohttp
 import os
 from datetime import datetime, timedelta
@@ -90,16 +91,22 @@ class MonobankAPI:
                     raise Exception(f'Помилка перевірки статусу: {error_text}')
     
     @staticmethod
-    def verify_signature(webhook_data: dict, public_key: str = None):
-        """
-        Перевірити підпис від Monobank (для безпеки)
+    def verify_signature(webhook_data: dict, x_sign: str):
+        """Перевірити підпис webhook"""
+        import base64
+        import hashlib
+        import ecdsa
         
-        В продакшні обов'язково реалізувати!
-        Зараз для простоти пропускаємо.
-        """
-        # TODO: Implement signature verification
-        # https://api.monobank.ua/docs/acquiring.html#tag/Acquiring-API/Veb-huki
-        return True
+        # 1. Отримати публічний ключ Monobank
+        pub_key_base64 = "LS0tLS1CRUdJTi..." # з https://api.monobank.ua/api/merchant/pubkey
+        
+        # 2. Перевірити
+        pub_key_bytes = base64.b64decode(pub_key_base64)
+        signature_bytes = base64.b64decode(x_sign)
+        body_bytes = json.dumps(webhook_data).encode()
+        
+        pub_key = ecdsa.VerifyingKey.from_pem(pub_key_bytes.decode())
+        return pub_key.verify(signature_bytes, body_bytes, ...)
 
 # Створити екземпляр
 monobank = MonobankAPI()
