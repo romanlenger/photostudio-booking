@@ -42,6 +42,20 @@ services:
     networks:
       - photostudio_network
     restart: unless-stopped
+  reminders:
+    build: .
+    command: python reminder_service.py
+    volumes:
+      - ./reminder_service.py:/app/reminder_service.py
+      - ./app:/app/app
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      - photostudio_network
+    restart: unless-stopped
+
 
 volumes:
   postgres_data:
