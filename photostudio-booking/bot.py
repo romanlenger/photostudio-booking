@@ -978,12 +978,14 @@ async def confirm_payment_callback(update: Update, context):
     try:
         # Find booking(s) by ID or group_id
         # First try as booking_id   booking = db.query(Booking).filter(Booking.id == int(callback_id)).first()
+        booking = None
+        
         try:
             booking = db.query(Booking).filter(Booking.id == int(callback_id)).first()
         except ValueError:
             # callback_id is UUID, not integer
             pass        
-        
+
         if booking:
             # Check if it's a group
             if booking.booking_group_id:
