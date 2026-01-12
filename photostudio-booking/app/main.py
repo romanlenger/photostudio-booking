@@ -86,6 +86,11 @@ async def create_booking(
             client = models.Client(name=booking.name, phone=booking.phone)
             db.add(client)
             db.flush()
+        else:
+            # ✅ Оновити ім'я клієнта якщо воно змінилось
+            if client.name != booking.name:
+                client.name = booking.name
+                db.flush()
         
         # Згенерувати booking_group_id для зв'язку всіх годин
         booking_group_id = str(uuid.uuid4())
