@@ -1,3 +1,4 @@
+import pytz
 from fastapi import FastAPI, Depends, HTTPException, Query, BackgroundTasks, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -15,6 +16,16 @@ from . import models, schemas
 from .database import engine, get_db
 from .auth import verify_password, create_access_token, get_current_admin
 from .telegram_service import telegram_notifier
+
+KYIV_TZ = pytz.timezone('Europe/Kiev')
+
+# У функції get_bookings_needing_reminder (рядок ~60):
+# Було:
+now = datetime.now()
+
+# Стало:
+now = datetime.now(KYIV_TZ).replace(tzinfo=None)
+
 
 # Створення таблиць
 models.Base.metadata.create_all(bind=engine)
