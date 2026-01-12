@@ -115,7 +115,7 @@ async def send_reminder(bot, booking, hours_before):
         
         # Emoji для часу
         time_emoji = "⏰" if hours_before == 24 else "🔔"
-        time_text = "24 години" if hours_before == 24 else "3 години"
+        time_text = "24 години" if hours_before == 24 else "1 година"
         
         # Формування повідомлення
         message = f"""{time_emoji} <b>Нагадування!</b>
