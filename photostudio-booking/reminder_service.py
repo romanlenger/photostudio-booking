@@ -25,7 +25,7 @@ if not BOT_TOKEN:
     except:
         raise ValueError("BOT_TOKEN not found!")
 
-CHECK_INTERVAL = 15 * 60  # Перевірка кожні 15 хвилин
+CHECK_INTERVAL = 1 * 60  # Перевірка кожні 15 хвилин
 REMINDER_24H = 24 * 60  # 24 години в хвилинах
 REMINDER_3H = 1 * 60    # 3 години в хвилинах
 TOLERANCE = 15          # Толерантність ±15 хвилин
