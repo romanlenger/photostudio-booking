@@ -1057,7 +1057,7 @@ async def confirm_payment_callback(update: Update, context):
 📋 <b>Деталі:</b>
 {services_summary}
 
-💰 Оплату отримано і перевірено{"(зі знижкою 10%)" if has_discount else ""}
+💰 Оплату отримано і перевірено {"(зі знижкою 10%)" if has_discount else ""}
 
 🎯 <b>Будьте готові!</b>
 Клієнт чекає на вас у студії в призначений час."""
@@ -1069,16 +1069,17 @@ async def confirm_payment_callback(update: Update, context):
                     parse_mode='HTML'
                 )
             except Exception as e:
-                # logger.error(f"Failed to notify photographer: {e}")
-        
-        # logger.info(f"✅ Payment confirmed for booking {first_booking.id} by admin")
+                print(f"Failed to notify photographer: {e}")
         
     except Exception as e:
-        # logger.error(f"Error confirming payment: {e}")
-        await query.edit_message_text(
-            text=query.message.text + f"\n\n❌ <b>Помилка:</b> {str(e)}",
-            parse_mode='HTML'
-        )
+        print(f"Error confirming payment: {e}")
+        try:
+            await query.edit_message_text(
+                text=query.message.text + f"\n\n❌ <b>Помилка:</b> {str(e)}",
+                parse_mode='HTML'
+            )
+        except:
+            pass
     finally:
         db.close()
 
