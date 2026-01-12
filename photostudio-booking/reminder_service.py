@@ -1,5 +1,4 @@
 import os
-import pytz
 import asyncio
 from datetime import datetime, timedelta
 from telegram import Bot
@@ -9,8 +8,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.database import SessionLocal
 from app.models import Booking, Client
-
-KYIV_TZ = pytz.timezone('Europe/Kiev')
 
 # Налаштування логування
 logging.basicConfig(
@@ -52,7 +49,7 @@ def get_bookings_needing_reminder(db, reminder_minutes):
     Отримати бронювання які потребують нагадування
     reminder_minutes: 1440 для 24 години, 180 для 3 години
     """
-    now = datetime.now(KYIV_TZ).replace(tzinfo=None)
+    now = datetime.now() + timedelta(hours=2)  # Локальний час Києва без часової зони
     target_time = now + timedelta(minutes=reminder_minutes)
     
     # Часові рамки з толерантністю
