@@ -230,6 +230,13 @@ async def button_callback(update: Update, context):
     await query.answer()
     data = query.data
     
+    # Payment confirmation handlers (handled by separate handlers below)
+    if data.startswith("confirm_pay_") or data.startswith("reject_pay_"):
+        # These are handled by CallbackQueryHandler with pattern
+        # Don't process here to avoid conflicts
+        return
+    
+    # Booking confirmation/cancellation
     if data.startswith("confirm_"):
         booking_id = int(data.replace("confirm_", ""))
         await confirm_booking(query, context, booking_id)
@@ -1118,11 +1125,10 @@ async def reject_payment_callback(update: Update, context):
                 parse_mode='HTML'
             )
         
-        # logger.info(f"❌ Payment rejected for booking {booking.id if booking else callback_id}")
+        print(f"❌ Payment rejected for booking {booking.id if booking else callback_id}")
         
     except Exception as e:
-        # logger.error(f"Error rejecting payment: {e}")
-        pass
+        print(f"Error rejecting payment: {e}")
     finally:
         db.close()
 
