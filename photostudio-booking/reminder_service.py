@@ -30,7 +30,7 @@ if not BOT_TOKEN:
 CHECK_INTERVAL = 1 * 60  # Перевірка кожні 15 хвилин
 REMINDER_24H = 24 * 60  # 24 години в хвилинах
 REMINDER_3H = 1 * 60    # 3 години в хвилинах
-TOLERANCE = 1       # Толерантність ±15 хвилин
+TOLERANCE = 2       # Толерантність ±15 хвилин
 
 def format_hours_display(hours):
     """Форматувати години для відображення"""
