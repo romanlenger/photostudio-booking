@@ -69,7 +69,7 @@ class TelegramNotifier:
             formatted_date = booking_date
         
         # Форматування часу
-        time_range = f"{booking_hour:02d}:00 - {booking_hour+1:02d}:00"
+        # time_range = f"{booking_hour:02d}:00 - {booking_hour+1:02d}:00"
         
         # Повідомлення
         message = f"""

@@ -927,13 +927,10 @@
             }
 
             try {
-                const response = await fetch('/api/admin/bookings/create', {
+                const response = await fetch('/api/auth/login', {  // ← Правильний endpoint
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    },
-                    body: JSON.stringify(bookingData)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: password })
                 });
 
                 if (response.ok) {
@@ -1377,9 +1374,12 @@
                     });
                 }
 
-                const response = await fetch('/api/bookings/', {
+                const response = await fetch('/api/admin/bookings/create', {  // ← Новий endpoint
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
                     body: JSON.stringify(bookingData)
                 });
 
