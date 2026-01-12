@@ -1138,11 +1138,12 @@ app = Application.builder().token(BOT_TOKEN).build()
 def main():
     """Start bot"""
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(confirm_payment_callback, pattern="^confirm_pay_"))
+    app.add_handler(CallbackQueryHandler(reject_payment_callback, pattern="^reject_pay_"))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-    app.add_handler(CallbackQueryHandler(confirm_payment_callback, pattern="^confirm_pay_"))
-    app.add_handler(CallbackQueryHandler(reject_payment_callback, pattern="^reject_pay_"))
+
     
     print("🤖 Bot started! (Simplified v2.0)")
     print("✅ All services selected on website")
