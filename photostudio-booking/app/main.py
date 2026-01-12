@@ -160,6 +160,118 @@ async def create_booking(
             detail="Одна з обраних годин щойно була заброньована. Спробуйте ще раз."
         )
 
+
+@app.post("/api/admin/bookings/create", response_model=schemas.BookingGroupResponse, status_code=201)
+async def create_admin_booking(
+    booking: schemas.BookingCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin)
+):
+    """
+    Створити нове бронювання через АДМІН-ПАНЕЛЬ
+    Автоматично встановлює статус 'confirmed'
+    """
+    
+    # Перевірити, чи всі обрані години доступні
+    for hour in booking.booking_hours:
+        existing_booking = db.query(models.Booking).filter(
+            models.Booking.booking_date == booking.booking_date,
+            models.Booking.booking_hour == hour,
+            models.Booking.status.in_(['pending', 'confirmed', 'paid'])
+        ).first()
+        
+        if existing_booking:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Година {hour}:00 вже зайнята. Оберіть іншу годину."
+            )
+    
+    try:
+        # Знайти або створити клієнта
+        client = db.query(models.Client).filter(
+            models.Client.phone == booking.phone
+        ).first()
+        
+        if not client:
+            client = models.Client(name=booking.name, phone=booking.phone)
+            db.add(client)
+            db.flush()
+        else:
+            # Оновити ім'я клієнта якщо воно змінилось
+            if client.name != booking.name:
+                client.name = booking.name
+                db.flush()
+        
+        # Згенерувати booking_group_id для зв'язку всіх годин
+        booking_group_id = str(uuid.uuid4())
+        
+        # Створити ОКРЕМИЙ запис для КОЖНОЇ години
+        booking_ids = []
+        
+        for hour in booking.booking_hours:
+            db_booking = models.Booking(
+                client_id=client.id,
+                booking_date=booking.booking_date,
+                booking_hour=hour,
+                booking_group_id=booking_group_id,
+                status="confirmed",  # ← АДМІН створює зі статусом confirmed!
+                # Всі послуги однакові для всіх годин
+                people_count=booking.people_count,
+                zone_choice=booking.zone_choice,
+                animals_count=booking.animals_count,
+                background_choice=booking.background_choice,
+                photographer_choice=booking.photographer_choice,
+                total_price=booking.total_price
+            )
+            db.add(db_booking)
+            db.flush()
+            booking_ids.append(db_booking.id)
+        
+        db.commit()
+        
+        # Створити Telegram deep link (використовуємо ID першого бронювання)
+        first_booking_id = booking_ids[0]
+        bot_username = os.getenv("BOT_USERNAME", "clique_booking_bot")
+        telegram_link = f"https://t.me/{bot_username}?start=booking_{first_booking_id}"
+        
+        # Відправити сповіщення адміну (в фоновому режимі)
+        hours_display = format_hours_display(booking.booking_hours)
+        background_tasks.add_task(
+            telegram_notifier.send_new_booking_notification,
+            client_name=booking.name,
+            client_phone=booking.phone,
+            booking_hour=hours_display,
+            booking_date=str(booking.booking_date),
+            booking_id=first_booking_id,
+        )
+        
+        # Повернути відповідь
+        return schemas.BookingGroupResponse(
+            booking_group_id=booking_group_id,
+            booking_ids=booking_ids,
+            hours=booking.booking_hours,
+            client_name=booking.name,
+            client_phone=booking.phone,
+            booking_date=booking.booking_date,
+            status="confirmed",  # ← Повертаємо confirmed
+            people_count=booking.people_count,
+            zone_choice=booking.zone_choice,
+            animals_count=booking.animals_count,
+            background_choice=booking.background_choice,
+            photographer_choice=booking.photographer_choice,
+            total_price=booking.total_price,
+            telegram_link=telegram_link
+        )
+        
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Одна з обраних годин щойно була заброньована. Спробуйте ще раз."
+        )
+
+
 def format_hours_display(hours: List[int]) -> str:
     """
     Форматувати години для відображення
@@ -553,6 +665,7 @@ async def monobank_webhook(request: Request):
 
 👤 <b>Клієнт:</b> {client.name}
 📞 <b>Телефон:</b> {client.phone}
+<b>Telegram:</b> {client.telegram_username if client.telegram_username else 'N/A'}
 
 📋 <b>Деталі:</b>
 {services_summary}
@@ -587,6 +700,7 @@ async def monobank_webhook(request: Request):
 
 👤 Клієнт: {client.name}
 📞 Телефон: {client.phone}
+<b>Telegram:</b> {client.telegram_username if client.telegram_username else 'N/A'}
 
 📋 <b>Деталі:</b>
 {services_summary}
