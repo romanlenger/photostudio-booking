@@ -1003,7 +1003,7 @@
 
             const today = new Date();
             const isCurrentMonth = (month - 1 === today.getMonth() && year === today.getFullYear());
-            document.getElementById('prevBtn').disabled = isCurrentMonth;
+            // document.getElementById('prevBtn').disabled = isCurrentMonth;
 
             try {
                 const response = await fetch(`/api/calendar/${year}/${month}`);
@@ -1231,14 +1231,23 @@
             const peopleExtra = Math.max(0, people - 4) * 100;
 
             const zone = document.getElementById('zoneChoice').value;
-            const zoneExtra = zone === 'both' ? 500 : 0;
+            let zoneExtra = 0;
+            if (zone === 'both') {
+                if (hours === 1) {
+                    zoneExtra = 500;  // Тільки за 1 годину доплата
+                } else {
+                    zoneExtra = 0;  // 2+ години - безкоштовно!
+                }
+            }
 
             const animals = parseInt(document.getElementById('animalsCount').value);
             const animalsExtra = Math.max(0, animals - 1) * 100;
 
             const bg = document.getElementById('backgroundChoice').value;
-            const bgExtra = bg !== 'none' ? 100 : 0;
-
+            const bgExtra = 0;
+            if (bg === 'purple' || bg === 'pink') {
+                bgExtra = 100;
+            }
             const pricePerHour = basePrice + peopleExtra + zoneExtra + animalsExtra + bgExtra;
             let totalForHours = pricePerHour * hours;
 
@@ -1540,9 +1549,10 @@
         }
 
         function previousMonth() {
-            const today = new Date();
-            if (currentDate.getMonth() === today.getMonth() && 
-                currentDate.getFullYear() === today.getFullYear()) return;
+            //Обмеження на попередній місяць вимкнено
+            // const today = new Date();
+            // if (currentDate.getMonth() === today.getMonth() && 
+            //     currentDate.getFullYear() === today.getFullYear()) return;
             currentDate.setMonth(currentDate.getMonth() - 1);
             loadCalendar();
         }
