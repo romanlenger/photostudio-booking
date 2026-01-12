@@ -874,13 +874,10 @@ async def handle_photo(update: Update, context):
             )
             return
         
-        # Update all bookings to paid
-        for booking in bookings:
-            booking.status = 'paid'
-        db.commit()
-        
         # Get first booking info
         first_booking = bookings[0]
+        booking_id = first_booking.id
+        booking_group_id = first_booking.booking_group_id
         client = db.query(Client).filter(Client.id == first_booking.client_id).first()
         
         hours = sorted([b.booking_hour for b in bookings])
@@ -892,7 +889,7 @@ async def handle_photo(update: Update, context):
         if len(hours) >= 3:
             discount_info = " (зі знижкою 10%)"
         
-        # Confirm to client
+        # Confirm to client - waiting for verification
         photographer_contact = ""
         if first_booking.photographer_choice == 'studio':
             photographer_contact = "\n\n💬 <b>Зв'язатись з фотографом для обговорення ідеї:</b> @lonkilin"
@@ -900,11 +897,8 @@ async def handle_photo(update: Update, context):
         await update.message.reply_text(
             f"""✅ <b>Квитанцію отримано!</b>
 
-Оплата буде перевірена найближчим часом.
-
-Дякуємо за бронювання{discount_info}! 🎉
-
-Чекаємо на вас у студії! 📸
+Адміністратор перевірить оплату протягом години.
+Ви отримаєте підтвердження після перевірки.
 
 📅 {first_booking.booking_date.strftime('%d.%m.%Y')}
 🕐 {hours_display}{photographer_contact}""",
@@ -912,13 +906,26 @@ async def handle_photo(update: Update, context):
             reply_markup=get_main_keyboard()
         )
         
-        # Forward to admins
+        # Send to admins with confirmation buttons
         username = update.effective_user.username
         tg = f"@{username}" if username else f"ID: {user_id}"
         
-        admin_message = f"""💰 <b>Отримано оплату!</b>
+        # Use booking_group_id for callback if exists, otherwise booking_id
+        callback_id = booking_group_id if booking_group_id else booking_id
+        
+        keyboard = [
+            [
+                InlineKeyboardButton("✅ Підтвердити оплату", 
+                                    callback_data=f"confirm_pay_{callback_id}"),
+                InlineKeyboardButton("❌ Відхилити", 
+                                    callback_data=f"reject_pay_{callback_id}")
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        admin_message = f"""💰 <b>Скріншот оплати отримано!</b>
 
-ID: #{first_booking.id}
+📋 Бронювання #{booking_id}
 👤 {client.name}
 📞 {client.phone}
 💬 {tg}
@@ -928,25 +935,115 @@ ID: #{first_booking.id}
 
 {services_summary}
 
-📸 Скріншот квитанції:"""
+💰 <b>Загальна сума:</b> {first_booking.total_price} грн{discount_info}
+
+📸 Скріншот квитанції нижче ⬇️"""
         
         for admin_id in ADMIN_IDS:
             try:
                 await context.bot.send_message(
                     chat_id=admin_id,
                     text=admin_message,
-                    parse_mode='HTML'
+                    parse_mode='HTML',
+                    reply_markup=reply_markup
                 )
                 await context.bot.forward_message(
                     chat_id=admin_id,
                     from_chat_id=update.message.chat_id,
                     message_id=update.message.message_id
                 )
-            except:
-                pass
+            except Exception as e:
+                print(f"Failed to notify admin {admin_id}: {e}")
         
-        # NEW: Notify photographer if studio photographer selected
+    finally:
+        db.close()
+
+# Callback handler for payment confirmation
+async def confirm_payment_callback(update: Update, context):
+    """Handle payment confirmation by admin"""
+    query = update.callback_query
+    await query.answer()
+    
+    # Extract booking/group ID
+    callback_id = query.data.split("_")[-1]
+    
+    db = get_db()
+    try:
+        # Find booking(s) by ID or group_id
+        # First try as booking_id
+        booking = db.query(Booking).filter(Booking.id == int(callback_id)).first()
+        
+        if booking:
+            # Check if it's a group
+            if booking.booking_group_id:
+                bookings = db.query(Booking).filter(
+                    Booking.booking_group_id == booking.booking_group_id
+                ).all()
+            else:
+                bookings = [booking]
+        else:
+            # Try as group_id
+            bookings = db.query(Booking).filter(
+                Booking.booking_group_id == callback_id
+            ).all()
+        
+        if not bookings:
+            await query.edit_message_text(
+                text=query.message.text + "\n\n❌ <b>Бронювання не знайдено!</b>",
+                parse_mode='HTML'
+            )
+            return
+        
+        first_booking = bookings[0]
+        client = db.query(Client).filter(Client.id == first_booking.client_id).first()
+        
+        # Update status to paid
+        for booking in bookings:
+            booking.status = 'paid'
+        db.commit()
+        
+        hours = sorted([b.booking_hour for b in bookings])
+        hours_display = format_hours_display(hours)
+        has_discount = len(hours) >= 3
+        
+        # Update admin message
+        await query.edit_message_text(
+            text=query.message.text + "\n\n✅ <b>ОПЛАТУ ПІДТВЕРДЖЕНО!</b>",
+            parse_mode='HTML'
+        )
+        
+        # Notify client
+        if first_booking.telegram_user_id:
+            photographer_contact = ""
+            if first_booking.photographer_choice == 'studio':
+                photographer_contact = "\n\n💬 <b>Зв'язатись з фотографом:</b> @lonkilin"
+            
+            confirmation_message = f"""✅ <b>Оплату підтверджено!</b>
+
+Ваше бронювання успішно оплачено та підтверджено.
+
+📅 <b>Дата:</b> {first_booking.booking_date.strftime('%d.%m.%Y')}
+🕐 <b>Час:</b> {hours_display} ({len(hours)} год)
+💰 <b>Сума:</b> {first_booking.total_price} грн
+{"🎉 <b>Знижка 10% застосована!</b>" if has_discount else ""}
+
+📍 <b>Адреса студії:</b>
+м. Бровари, Київська область
+провулок Івана Сокура, 1
+
+📞 <b>Контакт:</b> @clique_admin{photographer_contact}
+
+Чекаємо на вас! 🎉"""
+
+            await context.bot.send_message(
+                chat_id=first_booking.telegram_user_id,
+                text=confirmation_message,
+                parse_mode='HTML'
+            )
+        
+        # Notify photographer if studio photographer
         if first_booking.photographer_choice == 'studio':
+            services_summary = format_services_summary(first_booking)
             photographer_message = f"""✅ <b>Оплата підтверджена!</b>
 
 📸 <b>Ваша фотосесія:</b>
@@ -960,7 +1057,7 @@ ID: #{first_booking.id}
 📋 <b>Деталі:</b>
 {services_summary}
 
-💰 Оплату отримано і перевірено{discount_info}
+💰 Оплату отримано і перевірено{"(зі знижкою 10%)" if has_discount else ""}
 
 🎯 <b>Будьте готові!</b>
 Клієнт чекає на вас у студії в призначений час."""
@@ -971,15 +1068,60 @@ ID: #{first_booking.id}
                     text=photographer_message,
                     parse_mode='HTML'
                 )
-                # Also forward payment screenshot to photographer
-                await context.bot.forward_message(
-                    chat_id=PHOTOGRAPHER_ID,
-                    from_chat_id=update.message.chat_id,
-                    message_id=update.message.message_id
-                )
-            except:
-                pass
+            except Exception as e:
+                # logger.error(f"Failed to notify photographer: {e}")
         
+        # logger.info(f"✅ Payment confirmed for booking {first_booking.id} by admin")
+        
+    except Exception as e:
+        # logger.error(f"Error confirming payment: {e}")
+        await query.edit_message_text(
+            text=query.message.text + f"\n\n❌ <b>Помилка:</b> {str(e)}",
+            parse_mode='HTML'
+        )
+    finally:
+        db.close()
+
+
+async def reject_payment_callback(update: Update, context):
+    """Handle payment rejection by admin"""
+    query = update.callback_query
+    await query.answer()
+    
+    callback_id = query.data.split("_")[-1]
+    
+    db = get_db()
+    try:
+        # Find booking
+        booking = db.query(Booking).filter(Booking.id == int(callback_id)).first()
+        
+        if not booking:
+            bookings = db.query(Booking).filter(
+                Booking.booking_group_id == callback_id
+            ).all()
+            if bookings:
+                booking = bookings[0]
+        
+        # Update admin message
+        await query.edit_message_text(
+            text=query.message.text + "\n\n❌ <b>ОПЛАТУ ВІДХИЛЕНО</b>",
+            parse_mode='HTML'
+        )
+        
+        # Notify client
+        if booking and booking.telegram_user_id:
+            await context.bot.send_message(
+                chat_id=booking.telegram_user_id,
+                text="❌ На жаль, оплата не підтверджена.\n\n"
+                     "Будь ласка, зв'яжіться з адміністратором: @clique_admin",
+                parse_mode='HTML'
+            )
+        
+        # logger.info(f"❌ Payment rejected for booking {booking.id if booking else callback_id}")
+        
+    except Exception as e:
+        # logger.error(f"Error rejecting payment: {e}")
+        pass
     finally:
         db.close()
 
@@ -992,6 +1134,8 @@ def main():
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    app.add_handler(CallbackQueryHandler(confirm_payment_callback, pattern="^confirm_pay_"))
+    app.add_handler(CallbackQueryHandler(reject_payment_callback, pattern="^reject_pay_"))
     
     print("🤖 Bot started! (Simplified v2.0)")
     print("✅ All services selected on website")
