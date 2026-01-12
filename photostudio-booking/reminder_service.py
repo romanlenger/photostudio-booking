@@ -9,6 +9,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.database import SessionLocal
 from app.models import Booking, Client
 
+sent_reminders_cache = {}
+
 # Налаштування логування
 logging.basicConfig(
     level=logging.INFO,
@@ -28,7 +30,7 @@ if not BOT_TOKEN:
 CHECK_INTERVAL = 1 * 60  # Перевірка кожні 15 хвилин
 REMINDER_24H = 24 * 60  # 24 години в хвилинах
 REMINDER_3H = 1 * 60    # 3 години в хвилинах
-TOLERANCE = 15          # Толерантність ±15 хвилин
+TOLERANCE = 1       # Толерантність ±15 хвилин
 
 def format_hours_display(hours):
     """Форматувати години для відображення"""
@@ -89,6 +91,13 @@ def get_bookings_needing_reminder(db, reminder_minutes):
 
 async def send_reminder(bot, booking, hours_before):
     """Відправити нагадування клієнту"""
+    cache_key = f"{booking.id}_{hours_before}h"
+    
+    # Перевірка чи вже відправляли
+    if cache_key in sent_reminders_cache:
+        logger.info(f"⏭️  Already sent {hours_before}h reminder for booking {booking.id}")
+        return False
+    
     try:
         db = SessionLocal()
         
@@ -115,7 +124,7 @@ async def send_reminder(bot, booking, hours_before):
         
         # Emoji для часу
         time_emoji = "⏰" if hours_before == 24 else "🔔"
-        time_text = "24 години" if hours_before == 24 else "1 година"
+        time_text = "24 години" if hours_before == 24 else "60 хвилин"  # ← Виправив на "3 години"
         
         # Формування повідомлення
         message = f"""{time_emoji} <b>Нагадування!</b>
@@ -142,6 +151,8 @@ async def send_reminder(bot, booking, hours_before):
             parse_mode='HTML'
         )
         
+        # Додати в кеш і залогувати
+        sent_reminders_cache[cache_key] = datetime.now()
         logger.info(f"✅ Sent {hours_before}h reminder for booking {booking.id} to user {booking.telegram_user_id}")
         
         db.close()
