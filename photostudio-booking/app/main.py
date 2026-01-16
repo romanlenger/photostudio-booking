@@ -699,7 +699,6 @@ async def monobank_webhook(request: Request):
 
 👤 Клієнт: {client.name}
 📞 Телефон: {client.phone}
-<b>Telegram:</b> {client.telegram_username if client.telegram_username else 'N/A'}
 
 📋 <b>Деталі:</b>
 {services_summary}
