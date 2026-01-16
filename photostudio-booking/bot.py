@@ -1018,12 +1018,15 @@ async def confirm_payment_callback(update: Update, context):
         hours = sorted([b.booking_hour for b in bookings])
         hours_display = format_hours_display(hours)
         has_discount = len(hours) >= 3
-        
-        # Update admin message
-        await query.edit_message_text(
-            text=query.message.text + "\n\n✅ <b>ОПЛАТУ ПІДТВЕРДЖЕНО!</b>",
-            parse_mode='HTML'
-        )
+                
+        if "ОПЛАТУ ПІДТВЕРДЖЕНО" not in query.message.text:
+            try:
+                await query.edit_message_text(
+                    text=query.message.text + "\n\n✅ <b>ОПЛАТУ ПІДТВЕРДЖЕНО!</b>",
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                print(f"Could not edit admin message: {e}")
         
         # Notify client
         if first_booking.telegram_user_id:
@@ -1135,6 +1138,7 @@ async def reject_payment_callback(update: Update, context):
         
     except Exception as e:
         print(f"Error rejecting payment: {e}")
+        pass
     finally:
         db.close()
 
