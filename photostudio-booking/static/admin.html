@@ -639,6 +639,102 @@
             .login-box h2 {
                 font-size: 1.5em;
             }
+
+                        /* Модальне вікно перенесення */
+            #rescheduleModal {
+                display: none;
+                position: fixed;
+                z-index: 2000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0,0,0,0.7);
+            }
+
+            #rescheduleModal.active {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .reschedule-content {
+                background: white;
+                padding: 30px;
+                border-radius: 15px;
+                max-width: 500px;
+                width: 90%;
+                max-height: 80vh;
+                overflow-y: auto;
+            }
+
+            .reschedule-content h2 {
+                margin-bottom: 20px;
+                color: #333;
+            }
+
+            .reschedule-form-group {
+                margin-bottom: 20px;
+            }
+
+            .reschedule-form-group label {
+                display: block;
+                margin-bottom: 8px;
+                font-weight: 600;
+                color: #555;
+            }
+
+            .reschedule-form-group input,
+            .reschedule-form-group select {
+                width: 100%;
+                padding: 10px;
+                border: 2px solid #ddd;
+                border-radius: 8px;
+                font-size: 16px;
+            }
+
+            .reschedule-buttons {
+                display: flex;
+                gap: 10px;
+                margin-top: 25px;
+            }
+
+            .btn-reschedule {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }
+
+            .btn-reschedule:hover {
+                background: linear-gradient(135deg, #5568d3 0%, #63408b 100%);
+            }
+
+            /* Модальне вікно деталей */
+            #detailsModal {
+                display: none;
+                position: fixed;
+                z-index: 2000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0,0,0,0.7);
+            }
+
+            #detailsModal.active {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .details-content {
+                background: white;
+                padding: 30px;
+                border-radius: 15px;
+                max-width: 600px;
+                width: 90%;
+                max-height: 80vh;
+                overflow-y: auto;
+            }
         }
 
         @media screen and (max-width: 480px) {
@@ -895,6 +991,97 @@
             </div>
         </div>
     </div>
+        <!-- Модальне вікно перенесення -->
+    <div id="rescheduleModal">
+        <div class="reschedule-content">
+            <h2>📅 Перенести бронювання</h2>
+            <p id="rescheduleBookingInfo" style="margin-bottom: 20px; color: #666;"></p>
+            
+            <div class="reschedule-form-group">
+                <label>Нова дата:</label>
+                <input type="date" id="rescheduleDate" required>
+            </div>
+            
+            <div class="reschedule-form-group">
+                <label>Нова година:</label>
+                <select id="rescheduleHour" required>
+                    <option value="">Залишити поточну</option>
+                    <option value="9">09:00</option>
+                    <option value="10">10:00</option>
+                    <option value="11">11:00</option>
+                    <option value="12">12:00</option>
+                    <option value="13">13:00</option>
+                    <option value="14">14:00</option>
+                    <option value="15">15:00</option>
+                    <option value="16">16:00</option>
+                    <option value="17">17:00</option>
+                    <option value="18">18:00</option>
+                    <option value="19">19:00</option>
+                    <option value="20">20:00</option>
+                </select>
+            </div>
+            
+            <div class="reschedule-buttons">
+                <button class="btn btn-primary" onclick="confirmReschedule()">✅ Перенести</button>
+                <button class="btn btn-secondary" onclick="closeRescheduleModal()">❌ Скасувати</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальне вікно редагування деталей -->
+    <div id="detailsModal">
+        <div class="details-content">
+            <h2>✏️ Редагувати деталі бронювання</h2>
+            <p id="detailsBookingInfo" style="margin-bottom: 20px; color: #666;"></p>
+            
+            <div class="reschedule-form-group">
+                <label>Кількість людей:</label>
+                <input type="number" id="detailsPeopleCount" min="1" max="20" value="4">
+            </div>
+            
+            <div class="reschedule-form-group">
+                <label>Зона:</label>
+                <select id="detailsZoneChoice">
+                    <option value="light">☀️ Світла</option>
+                    <option value="dark">🌙 Темна</option>
+                    <option value="both">✨ Обидві</option>
+                </select>
+            </div>
+            
+            <div class="reschedule-form-group">
+                <label>Кількість тварин:</label>
+                <input type="number" id="detailsAnimalsCount" min="0" max="10" value="0">
+            </div>
+            
+            <div class="reschedule-form-group">
+                <label>Фон:</label>
+                <select id="detailsBackgroundChoice">
+                    <option value="none">Без фону</option>
+                    <option value="white">⚪ Білий</option>
+                    <option value="black">⚫ Чорний</option>
+                    <option value="red">🔴 Червоний</option>
+                </select>
+            </div>
+            
+            <div class="reschedule-form-group">
+                <label>Фотограф:</label>
+                <select id="detailsPhotographerChoice">
+                    <option value="client">🙋 Ваш фотограф</option>
+                    <option value="studio">👨‍💼 Наш фотограф (+2000₴/год)</option>
+                </select>
+            </div>
+            
+            <div class="reschedule-form-group">
+                <label>Загальна ціна (грн):</label>
+                <input type="number" id="detailsTotalPrice" min="0" step="100">
+            </div>
+            
+            <div class="reschedule-buttons">
+                <button class="btn btn-primary" onclick="confirmDetailsUpdate()">✅ Зберегти</button>
+                <button class="btn btn-secondary" onclick="closeDetailsModal()">❌ Скасувати</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         let authToken = localStorage.getItem('adminToken');
@@ -1124,8 +1311,11 @@
                             📞 ${booking.client_phone}<br>
                             ${badges}
                         </div>
-                        <button class="btn btn-edit" onclick="editBooking('${booking.booking_group_id || booking.booking_id}', ${booking.booking_id})">
-                            ✏️ Редагувати
+                        <button class="btn btn-reschedule" onclick="showRescheduleModal(${booking.booking_id}, '${booking.client_name}', ${booking.hour})">
+                            📅 Перенести
+                        </button>
+                        <button class="btn btn-edit" onclick="editBookingDetails(${booking.booking_id})">
+                            ✏️ Деталі
                         </button>
                         <button class="btn btn-delete" onclick="deleteBooking(${booking.booking_id})">
                             🗑️ Видалити годину
@@ -1446,6 +1636,163 @@
                 }
             } catch (error) {
                 showMessage('Помилка з\'єднання', 'error');
+            }
+        }
+                // === ПЕРЕНЕСЕННЯ БРОНЮВАННЯ ===
+
+        let currentRescheduleBookingId = null;
+
+        function showRescheduleModal(bookingId, clientName, currentHour) {
+            currentRescheduleBookingId = bookingId;
+            
+            document.getElementById('rescheduleBookingInfo').textContent = 
+                `Клієнт: ${clientName}, поточна година: ${currentHour}:00`;
+            
+            // Встановити мінімальну дату - сьогодні
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('rescheduleDate').setAttribute('min', today);
+            document.getElementById('rescheduleDate').value = '';
+            document.getElementById('rescheduleHour').value = '';
+            
+            document.getElementById('rescheduleModal').classList.add('active');
+        }
+
+        function closeRescheduleModal() {
+            document.getElementById('rescheduleModal').classList.remove('active');
+            currentRescheduleBookingId = null;
+        }
+
+        async function confirmReschedule() {
+            const newDate = document.getElementById('rescheduleDate').value;
+            const newHourStr = document.getElementById('rescheduleHour').value;
+            
+            if (!newDate && !newHourStr) {
+                alert('Оберіть нову дату або годину!');
+                return;
+            }
+            
+            const payload = {};
+            if (newDate) payload.new_date = newDate;
+            if (newHourStr) payload.new_hour = parseInt(newHourStr);
+            
+            try {
+                const response = await fetch(`/api/admin/bookings/${currentRescheduleBookingId}/reschedule`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showMessage('✅ Бронювання перенесено! Клієнт отримав повідомлення.', 'success');
+                    closeRescheduleModal();
+                    setTimeout(() => {
+                        closeModal();
+                        loadCalendar();
+                        loadTodayBookings();
+                    }, 1500);
+                } else {
+                    const error = await response.json();
+                    showMessage(`❌ Помилка: ${error.detail}`, 'error');
+                }
+            } catch (error) {
+                showMessage('❌ Помилка з\'єднання', 'error');
+            }
+        }
+
+        // === РЕДАГУВАННЯ ДЕТАЛЕЙ ===
+
+        let currentDetailsBookingId = null;
+
+        async function editBookingDetails(bookingId) {
+            currentDetailsBookingId = bookingId;
+            
+            try {
+                // Завантажити поточні дані
+                const response = await fetch(`/api/admin/bookings/list?start_date=${selectedDate}&end_date=${selectedDate}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const bookings = await response.json();
+                const booking = bookings.find(b => b.id === bookingId);
+                
+                if (!booking) {
+                    showMessage('Бронювання не знайдено', 'error');
+                    return;
+                }
+                
+                // Заповнити форму
+                document.getElementById('detailsBookingInfo').textContent = 
+                    `Клієнт: ${booking.client.name}, ${booking.booking_date} о ${booking.booking_hour}:00`;
+                
+                document.getElementById('detailsPeopleCount').value = booking.people_count || 4;
+                document.getElementById('detailsZoneChoice').value = booking.zone_choice || 'light';
+                document.getElementById('detailsAnimalsCount').value = booking.animals_count || 0;
+                document.getElementById('detailsBackgroundChoice').value = booking.background_choice || 'none';
+                document.getElementById('detailsPhotographerChoice').value = booking.photographer_choice || 'client';
+                document.getElementById('detailsTotalPrice').value = booking.total_price || 1000;
+                
+                document.getElementById('detailsModal').classList.add('active');
+                
+            } catch (error) {
+                showMessage('Помилка завантаження даних', 'error');
+            }
+        }
+
+        function closeDetailsModal() {
+            document.getElementById('detailsModal').classList.remove('active');
+            currentDetailsBookingId = null;
+        }
+
+        async function confirmDetailsUpdate() {
+            const payload = {
+                people_count: parseInt(document.getElementById('detailsPeopleCount').value),
+                zone_choice: document.getElementById('detailsZoneChoice').value,
+                animals_count: parseInt(document.getElementById('detailsAnimalsCount').value),
+                background_choice: document.getElementById('detailsBackgroundChoice').value,
+                photographer_choice: document.getElementById('detailsPhotographerChoice').value,
+                total_price: parseInt(document.getElementById('detailsTotalPrice').value)
+            };
+            
+            try {
+                const response = await fetch(`/api/admin/bookings/${currentDetailsBookingId}/details`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    showMessage('✅ Деталі оновлено! Клієнт отримав повідомлення.', 'success');
+                    closeDetailsModal();
+                    setTimeout(() => {
+                        closeModal();
+                        loadCalendar();
+                        loadTodayBookings();
+                    }, 1500);
+                } else {
+                    const error = await response.json();
+                    showMessage(`❌ Помилка: ${error.detail}`, 'error');
+                }
+            } catch (error) {
+                showMessage('❌ Помилка з\'єднання', 'error');
+            }
+        }
+
+        // Закриття модальних вікон по кліку поза ними
+        window.onclick = function(event) {
+            if (event.target === document.getElementById('bookingModal')) {
+                closeModal();
+            }
+            if (event.target === document.getElementById('rescheduleModal')) {
+                closeRescheduleModal();
+            }
+            if (event.target === document.getElementById('detailsModal')) {
+                closeDetailsModal();
             }
         }
 

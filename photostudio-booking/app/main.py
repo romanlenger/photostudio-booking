@@ -21,6 +21,140 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Photo Studio Booking System", version="2.0.0")
 
+
+async def send_reschedule_notification(
+    telegram_user_id: int,
+    client_name: str,
+    old_date: date,
+    old_hour: int,
+    new_date: date,
+    new_hour: int,
+    booking: models.Booking
+):
+    """Відправити повідомлення клієнту про перенесення бронювання"""
+    BOT_TOKEN = os.getenv("BOT_TOKEN")
+    if not BOT_TOKEN:
+        return
+    
+    bot = Bot(token=BOT_TOKEN)
+    
+    # Форматування деталей
+    zones = {'light': '☀️ Світла', 'dark': '🌙 Темна', 'both': '✨ Обидві'}
+    bgs = {'none': 'Без фону', 'white': '⚪ Білий', 'black': '⚫ Чорний', 'red': '🔴 Червоний'}
+    photographers = {'client': '🙋 Ваш фотограф', 'studio': '👨‍💼 Наш фотограф'}
+    
+    services_info = []
+    if booking.people_count:
+        services_info.append(f"👥 Людей: {booking.people_count}")
+    if booking.zone_choice:
+        services_info.append(f"📸 Зона: {zones.get(booking.zone_choice, booking.zone_choice)}")
+    if booking.animals_count:
+        services_info.append(f"🐾 Тварини: {booking.animals_count}")
+    if booking.background_choice:
+        services_info.append(f"🎨 Фон: {bgs.get(booking.background_choice, booking.background_choice)}")
+    if booking.photographer_choice:
+        services_info.append(f"📷 Фотограф: {photographers.get(booking.photographer_choice, booking.photographer_choice)}")
+    
+    services_summary = "\n".join(services_info) if services_info else "Базові послуги"
+    
+    message = f"""📅 <b>Ваше бронювання перенесено!</b>
+
+👤 {client_name}
+
+<b>Було:</b>
+📆 {old_date.strftime('%d.%m.%Y')}
+🕐 {old_hour}:00
+
+<b>Стало:</b>
+📆 {new_date.strftime('%d.%m.%Y')}
+🕐 {new_hour}:00
+
+━━━━━━━━━━━━━━━━
+
+📋 <b>Деталі бронювання:</b>
+{services_summary}
+
+💰 <b>Вартість:</b> {booking.total_price} грн
+
+━━━━━━━━━━━━━━━━
+
+📍 <b>Адреса:</b> м. Бровари, провулок Івана Сокура, 1
+📞 <b>Контакт:</b> @clique_admin
+
+Чекаємо на вас! 📸"""
+    
+    try:
+        await bot.send_message(
+            chat_id=telegram_user_id,
+            text=message,
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logging.error(f"Failed to send reschedule notification: {e}")
+
+
+async def send_details_update_notification(
+    telegram_user_id: int,
+    client_name: str,
+    booking: models.Booking
+):
+    """Відправити повідомлення клієнту про оновлення деталей"""
+    BOT_TOKEN = os.getenv("BOT_TOKEN")
+    if not BOT_TOKEN:
+        return
+    
+    bot = Bot(token=BOT_TOKEN)
+    
+    # Форматування деталей
+    zones = {'light': '☀️ Світла', 'dark': '🌙 Темна', 'both': '✨ Обidві'}
+    bgs = {'none': 'Без фону', 'white': '⚪ Білий', 'black': '⚫ Чорний', 'red': '🔴 Червоний'}
+    photographers = {'client': '🙋 Ваш фотограф', 'studio': '👨‍💼 Наш фотограф'}
+    
+    services_info = []
+    if booking.people_count:
+        services_info.append(f"👥 Людей: {booking.people_count}")
+    if booking.zone_choice:
+        services_info.append(f"📸 Зона: {zones.get(booking.zone_choice, booking.zone_choice)}")
+    if booking.animals_count:
+        services_info.append(f"🐾 Тварини: {booking.animals_count}")
+    if booking.background_choice:
+        services_info.append(f"🎨 Фон: {bgs.get(booking.background_choice, booking.background_choice)}")
+    if booking.photographer_choice:
+        services_info.append(f"📷 Фотограф: {photographers.get(booking.photographer_choice, booking.photographer_choice)}")
+    
+    services_summary = "\n".join(services_info) if services_info else "Базові послуги"
+    
+    message = f"""📝 <b>Деталі вашого бронювання оновлено!</b>
+
+👤 {client_name}
+
+📅 <b>Дата:</b> {booking.booking_date.strftime('%d.%m.%Y')}
+🕐 <b>Час:</b> {booking.booking_hour}:00
+
+━━━━━━━━━━━━━━━━
+
+📋 <b>Оновлені деталі:</b>
+{services_summary}
+
+💰 <b>Вартість:</b> {booking.total_price} грн
+
+━━━━━━━━━━━━━━━━
+
+📍 <b>Адреса:</b> м. Бровари, провулок Івана Сокура, 1
+📞 <b>Контакт:</b> @clique_admin
+
+Чекаємо на вас! 📸"""
+    
+    try:
+        await bot.send_message(
+            chat_id=telegram_user_id,
+            text=message,
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logging.error(f"Failed to send details update notification: {e}")
+
+
 # Статичні файли
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -562,6 +696,126 @@ def delete_booking_group(
         "deleted_hours": deleted_hours,
         "count": len(deleted_hours)
     }
+
+
+@app.put("/api/admin/bookings/{booking_id}/reschedule")
+async def reschedule_booking(
+    booking_id: int,
+    reschedule_data: schemas.RescheduleBooking,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin)
+):
+    """Перенести бронювання на нову дату/час (зберігаючи telegram_user_id)"""
+    
+    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    
+    if not booking:
+        raise HTTPException(status_code=404, detail="Бронювання не знайдено")
+    
+    # Зберегти старі дані для повідомлення
+    old_date = booking.booking_date
+    old_hour = booking.booking_hour
+    client = db.query(models.Client).filter(models.Client.id == booking.client_id).first()
+    
+    # Перевірити чи нова година доступна
+    if reschedule_data.new_hour is not None:
+        new_hour = reschedule_data.new_hour
+        check_date = reschedule_data.new_date if reschedule_data.new_date else booking.booking_date
+        
+        existing = db.query(models.Booking).filter(
+            models.Booking.booking_date == check_date,
+            models.Booking.booking_hour == new_hour,
+            models.Booking.id != booking_id,
+            models.Booking.status.in_(['pending', 'confirmed', 'paid'])
+        ).first()
+        
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Година {new_hour}:00 на дату {check_date} вже зайнята"
+            )
+    
+    # Оновити дату та/або час
+    if reschedule_data.new_date:
+        booking.booking_date = reschedule_data.new_date
+    if reschedule_data.new_hour is not None:
+        booking.booking_hour = reschedule_data.new_hour
+    
+    db.commit()
+    db.refresh(booking)
+    
+    # Відправити повідомлення клієнту про перенесення
+    if booking.telegram_user_id:
+        background_tasks.add_task(
+            send_reschedule_notification,
+            telegram_user_id=booking.telegram_user_id,
+            client_name=client.name,
+            old_date=old_date,
+            old_hour=old_hour,
+            new_date=booking.booking_date,
+            new_hour=booking.booking_hour,
+            booking=booking
+        )
+    
+    return {
+        "message": "Бронювання перенесено",
+        "booking_id": booking_id,
+        "old_date": str(old_date),
+        "old_hour": old_hour,
+        "new_date": str(booking.booking_date),
+        "new_hour": booking.booking_hour
+    }
+
+
+@app.put("/api/admin/bookings/{booking_id}/details")
+async def update_booking_details(
+    booking_id: int,
+    details_data: schemas.UpdateBookingDetails,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin)
+):
+    """Оновити деталі бронювання (фон, зона, к-ть людей тощо)"""
+    
+    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    
+    if not booking:
+        raise HTTPException(status_code=404, detail="Бронювання не знайдено")
+    
+    client = db.query(models.Client).filter(models.Client.id == booking.client_id).first()
+    
+    # Оновити деталі
+    if details_data.people_count is not None:
+        booking.people_count = details_data.people_count
+    if details_data.zone_choice is not None:
+        booking.zone_choice = details_data.zone_choice
+    if details_data.animals_count is not None:
+        booking.animals_count = details_data.animals_count
+    if details_data.background_choice is not None:
+        booking.background_choice = details_data.background_choice
+    if details_data.photographer_choice is not None:
+        booking.photographer_choice = details_data.photographer_choice
+    if details_data.total_price is not None:
+        booking.total_price = details_data.total_price
+    
+    db.commit()
+    db.refresh(booking)
+    
+    # Відправити повідомлення клієнту про оновлення деталей
+    if booking.telegram_user_id:
+        background_tasks.add_task(
+            send_details_update_notification,
+            telegram_user_id=booking.telegram_user_id,
+            client_name=client.name,
+            booking=booking
+        )
+    
+    return {
+        "message": "Деталі бронювання оновлено",
+        "booking_id": booking_id
+    }
+
 
 @app.post("/api/monobank/webhook")
 async def monobank_webhook(request: Request):

@@ -136,3 +136,25 @@ class AdminDayStatusResponse(BaseModel):
     date: date
     has_bookings: bool
     bookings: List[BookingDetailResponse]
+
+
+class RescheduleBooking(BaseModel):
+    """Schema для перенесення бронювання"""
+    new_date: Optional[date] = None
+    new_hour: Optional[int] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class UpdateBookingDetails(BaseModel):
+    """Schema для оновлення деталей бронювання"""
+    people_count: Optional[int] = None
+    zone_choice: Optional[str] = None
+    animals_count: Optional[int] = None
+    background_choice: Optional[str] = None
+    photographer_choice: Optional[str] = None
+    total_price: Optional[int] = None
+    
+    class Config:
+        from_attributes = True

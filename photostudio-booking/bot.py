@@ -1119,11 +1119,14 @@ async def reject_payment_callback(update: Update, context):
             if bookings:
                 booking = bookings[0]
         
-        # Update admin message
-        await query.edit_message_text(
-            text=query.message.text + "\n\n❌ <b>ОПЛАТУ ВІДХИЛЕНО</b>",
-            parse_mode='HTML'
-        )
+        if "ОПЛАТУ ВІДХИЛЕНО" not in query.message.text:
+            try:
+                await query.edit_message_text(
+                    text=query.message.text + "\n\n❌ <b>ОПЛАТУ ВІДХИЛЕНО</b>",
+                    parse_mode='HTML'
+                )
+            except Exception as e:
+                print(f"Could not edit admin message: {e}")
         
         # Notify client
         if booking and booking.telegram_user_id:
@@ -1141,6 +1144,7 @@ async def reject_payment_callback(update: Update, context):
         pass
     finally:
         db.close()
+
 
 # ========== MAIN ==========
 app = Application.builder().token(BOT_TOKEN).build()
