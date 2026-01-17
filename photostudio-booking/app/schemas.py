@@ -149,6 +149,7 @@ class RescheduleBooking(BaseModel):
 
 class UpdateBookingDetails(BaseModel):
     """Schema для оновлення деталей бронювання"""
+    client_name: Optional[str] = None
     people_count: Optional[int] = None
     zone_choice: Optional[str] = None
     animals_count: Optional[int] = None

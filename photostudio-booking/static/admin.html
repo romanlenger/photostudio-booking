@@ -1133,6 +1133,11 @@
         <div class="details-content">
             <h2>✏️ Редагувати деталі</h2>
             <p id="detailsBookingInfo"></p>
+            <div class="reschedule-form-group">
+                <label>👤 Ім'я клієнта:</label>
+                <input type="text" id="detailsClientName" placeholder="Іван Петренко">
+                <small>Нове ім'я клієнта</small>
+            </div>
             
             <div class="reschedule-form-group">
                 <label>👥 Кількість людей:</label>
@@ -1413,7 +1418,7 @@
                     if (booking.total_price) {
                         badges += `<span class="badge badge-price">💰 ${booking.total_price}₴</span>`;
                     }
-                    
+
                     hourDiv.innerHTML = `
                         <div class="hour-time">${booking.hour}:00</div>
                         <div class="hour-details">
@@ -1836,7 +1841,8 @@
                 // Заповнити форму
                 document.getElementById('detailsBookingInfo').textContent = 
                     `Клієнт: ${booking.client.name}, ${booking.booking_date} о ${booking.booking_hour}:00`;
-                
+
+                document.getElementById('detailsClientName').value = booking.client.name || '';
                 document.getElementById('detailsPeopleCount').value = booking.people_count || 4;
                 document.getElementById('detailsZoneChoice').value = booking.zone_choice || 'light';
                 document.getElementById('detailsAnimalsCount').value = booking.animals_count || 0;
@@ -1858,6 +1864,7 @@
 
         async function confirmDetailsUpdate() {
             const payload = {
+                client_name: document.getElementById('detailsClientName').value.trim(),
                 people_count: parseInt(document.getElementById('detailsPeopleCount').value),
                 zone_choice: document.getElementById('detailsZoneChoice').value,
                 animals_count: parseInt(document.getElementById('detailsAnimalsCount').value),

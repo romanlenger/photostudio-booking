@@ -785,6 +785,9 @@ async def update_booking_details(
     
     client = db.query(models.Client).filter(models.Client.id == booking.client_id).first()
     
+    # Оновити ім'я клієнта якщо передано
+    if details_data.client_name is not None and details_data.client_name.strip():
+        client.name = details_data.client_name.strip()
     # Оновити деталі
     if details_data.people_count is not None:
         booking.people_count = details_data.people_count
@@ -798,7 +801,8 @@ async def update_booking_details(
         booking.photographer_choice = details_data.photographer_choice
     if details_data.total_price is not None:
         booking.total_price = details_data.total_price
-    
+
+    db.refresh(client)
     db.commit()
     db.refresh(booking)
     
@@ -813,7 +817,8 @@ async def update_booking_details(
     
     return {
         "message": "Деталі бронювання оновлено",
-        "booking_id": booking_id
+        "booking_id": booking_id,
+        "client_name": client.name  # ← ДОДАТИ ЦЕЙ РЯДОК
     }
 
 
