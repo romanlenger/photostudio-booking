@@ -500,6 +500,174 @@
             display: block;
         }
 
+        /* Модальні вікна перенесення та деталей */
+        #rescheduleModal,
+        #detailsModal {
+            display: none; /* ВАЖЛИВО - приховані за замовчуванням */
+            position: fixed;
+            z-index: 2001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            overflow-y: auto;
+        }
+
+        #rescheduleModal.active,
+        #detailsModal.active {
+            display: flex !important; /* Показати коли є клас active */
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .reschedule-content,
+        .details-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .reschedule-content h2,
+        .details-content h2 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .reschedule-content p,
+        .details-content p {
+            margin: 0 0 20px 0;
+            padding: 12px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .reschedule-form-group {
+            margin-bottom: 20px;
+        }
+
+        .reschedule-form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+            font-size: 0.95em;
+        }
+
+        .reschedule-form-group input,
+        .reschedule-form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+            box-sizing: border-box;
+        }
+
+        .reschedule-form-group input:focus,
+        .reschedule-form-group select:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        .reschedule-form-group small {
+            color: #999;
+            font-size: 0.85em;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .reschedule-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .reschedule-buttons .btn {
+            flex: 1;
+            padding: 12px 20px;
+            font-size: 1em;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .btn-reschedule,
+        .btn-save-details {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .btn-reschedule:hover,
+        .btn-save-details:hover {
+            background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #666;
+            border: 2px solid #e0e0e0;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+            border-color: #ccc;
+            transform: translateY(-2px);
+        }
+
+        /* Кнопки в hour-item для мобільних */
+        .btn-reschedule-hour {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-reschedule-hour:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #63408b 100%);
+        }
+
+        .btn-edit-details {
+            background: linear-gradient(135deg, #FF6B6B 0%, #EE5A6F 100%);
+            color: white;
+        }
+
+        .btn-edit-details:hover {
+            background: linear-gradient(135deg, #EE5A6F 0%, #DC4D5F 100%);
+        }
+
         /* Mobile Responsive Styles */
         @media screen and (max-width: 768px) {
             * {
@@ -640,178 +808,25 @@
                 font-size: 1.5em;
             }
 
-            /* Модальні вікна перенесення та деталей - в стилі основного модального вікна */
-            #rescheduleModal,
-            #detailsModal {
-                display: none;
-                position: fixed;
-                z-index: 2001; /* Вище основного модального вікна */
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.7);
-                overflow-y: auto;
-            }
-
-            #rescheduleModal.active,
-            #detailsModal.active {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-                animation: fadeIn 0.3s ease;
-            }
-
-            @keyframes fadeIn {
-                from {
-                    opacity: 0;
-                }
-                to {
-                    opacity: 1;
-                }
-            }
-
             .reschedule-content,
             .details-content {
-                background: white;
-                padding: 30px;
-                border-radius: 15px;
-                width: 90%;
-                max-width: 600px;
-                max-height: 90vh;
-                overflow-y: auto;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-                animation: slideUp 0.3s ease;
+                width: 95%;
+                padding: 20px;
+                max-height: 85vh;
             }
-
-            @keyframes slideUp {
-                from {
-                    transform: translateY(50px);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateY(0);
-                    opacity: 1;
-                }
-            }
-
-            .reschedule-content h2,
-            .details-content h2 {
-                margin: 0 0 10px 0;
-                color: #333;
-                font-size: 1.5em;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-
-            .reschedule-content p,
-            .details-content p {
-                margin: 0 0 20px 0;
-                padding: 12px;
-                background: #f5f5f5;
-                border-radius: 8px;
-                color: #666;
-                font-size: 0.95em;
-            }
-
-            .reschedule-form-group {
-                margin-bottom: 20px;
-            }
-
-            .reschedule-form-group label {
-                display: block;
-                margin-bottom: 8px;
-                font-weight: 600;
-                color: #555;
-                font-size: 0.95em;
-            }
-
-            .reschedule-form-group input,
-            .reschedule-form-group select {
-                width: 100%;
-                padding: 12px;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                font-size: 16px;
-                transition: all 0.3s;
-                box-sizing: border-box;
-            }
-
-            .reschedule-form-group input:focus,
-            .reschedule-form-group select:focus {
-                outline: none;
-                border-color: #4CAF50;
-                box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
-            }
-
+            
             .reschedule-buttons {
-                display: flex;
-                gap: 10px;
-                margin-top: 25px;
+                flex-direction: column;
             }
-
+            
             .reschedule-buttons .btn {
-                flex: 1;
-                padding: 12px 20px;
-                font-size: 1em;
-                font-weight: 600;
-                border-radius: 8px;
-                transition: all 0.3s;
+                width: 100%;
             }
-
-            .btn-reschedule {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-            }
-
-            .btn-reschedule:hover {
-                background: linear-gradient(135deg, #5568d3 0%, #63408b 100%);
-                transform: translateY(-2px);
-                box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-            }
-
-            .btn-save-details {
-                background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-                color: white;
-            }
-
-            .btn-save-details:hover {
-                background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
-                transform: translateY(-2px);
-                box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
-            }
-
-            .btn-secondary {
-                background: #f5f5f5;
-                color: #666;
-                border: 2px solid #e0e0e0;
-            }
-
-            .btn-secondary:hover {
-                background: #e0e0e0;
-                border-color: #ccc;
-                transform: translateY(-2px);
-            }
-
-            /* Стилі для кнопок в hour-item */
-            .btn-reschedule-hour {
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-            }
-
-            .btn-reschedule-hour:hover {
-                background: linear-gradient(135deg, #5568d3 0%, #63408b 100%);
-            }
-
-            .btn-edit-details {
-                background: linear-gradient(135deg, #FF6B6B 0%, #EE5A6F 100%);
-                color: white;
-            }
-
-            .btn-edit-details:hover {
-                background: linear-gradient(135deg, #EE5A6F 0%, #DC4D5F 100%);
+            
+            /* Кнопки в hour-item для мобільних - менші */
+            .hour-item .btn {
+                font-size: 0.85em;
+                padding: 8px 12px;
             }
         }
 
@@ -1398,7 +1413,7 @@
                     if (booking.total_price) {
                         badges += `<span class="badge badge-price">💰 ${booking.total_price}₴</span>`;
                     }
-
+                    
                     hourDiv.innerHTML = `
                         <div class="hour-time">${booking.hour}:00</div>
                         <div class="hour-details">
@@ -1406,7 +1421,7 @@
                             📞 ${booking.client_phone}<br>
                             ${badges}
                         </div>
-                        <button class="btn btn-reschedule-hour" onclick="showRescheduleModal(${booking.booking_id}, '${booking.client_name}', ${booking.hour})">
+                        <button class="btn btn-reschedule-hour" onclick="showRescheduleModal(${booking.booking_id}, '${booking.client_name.replace(/'/g, "\\'")}', ${booking.hour})">
                             📅 Перенести
                         </button>
                         <button class="btn btn-edit-details" onclick="editBookingDetails(${booking.booking_id})">
