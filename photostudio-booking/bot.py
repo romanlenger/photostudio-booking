@@ -575,27 +575,18 @@ async def handle_pay_manual(query, context, booking_id):
         date_str = booking.booking_date.strftime('%Y%m%d')
         
         payment_message = f"""💳 <b>Реквізити для оплати:</b>
-
 <code>{CARD_DISPLAY}</code>
 {CARDHOLDER_NAME}
-
 <b>Сума: {booking.total_price} грн</b>
-
 Призначення:
 <code>{purpose}</code>
-
 ⚠️ <b>Оплата за реквізитами тільки для фіз. осіб!</b>
-
 ━━━━━━━━━━━━━━━━
-
 📸 <b>Після оплати надішліть скріншот квитанції в цей чат</b>
-
 💡 Натисніть на номер картки або призначення щоб скопіювати"""
         
         # Copy buttons
         keyboard = [
-            # [InlineKeyboardButton("📋 Скопіювати картку", callback_data="copy_card")],
-            # [InlineKeyboardButton("📝 Скопіювати призначення", callback_data=f"copy_purpose_{date_str}_{hours_display.replace(':', '')}")],
             [InlineKeyboardButton("◀️ Назад до вибору оплати", callback_data=f"back_to_payment_{booking_id}")]
         ]
         
@@ -604,6 +595,50 @@ async def handle_pay_manual(query, context, booking_id):
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='HTML'
         )
+        
+        # НОВИЙ КОД - Відправити адміну повідомлення з кнопками
+        client = db.query(Client).filter(Client.id == booking.client_id).first()
+        services_summary = format_services_summary(booking)
+        discount_info = ""
+        if len(hours) >= 3:
+            discount_info = "\n🎉 Застосовано знижку 10%"
+        
+        admin_message = f"""🔔 <b>Клієнт запросив реквізити для оплати</b>
+
+👤 <b>Клієнт:</b> {client.name}
+📞 <b>Телефон:</b> {client.phone}
+
+📅 {booking.booking_date.strftime('%d.%m.%Y')}
+🕐 {hours_display} ({len(hours)} год)
+
+{services_summary}
+
+💰 <b>До оплати:</b> {booking.total_price} грн{discount_info}
+
+━━━━━━━━━━━━━━━━
+
+⚠️ <b>Очікується скріншот оплати від клієнта</b>
+
+<i>Або підтвердіть якщо оплата вже надійшла</i>"""
+        
+        # Кнопки для підтвердження/відхилення
+        callback_id = str(group_id) if group_id else str(booking_id)
+        reply_markup_admin = InlineKeyboardMarkup([[
+            InlineKeyboardButton("✅ Підтвердити оплату", callback_data=f"confirm_pay_{callback_id}"),
+            InlineKeyboardButton("❌ Відхилити", callback_data=f"reject_pay_{callback_id}")
+        ]])
+        
+        # Відправити всім адмінам
+        for admin_id in ADMIN_IDS:
+            try:
+                await context.bot.send_message(
+                    chat_id=admin_id,
+                    text=admin_message,
+                    parse_mode='HTML',
+                    reply_markup=reply_markup_admin
+                )
+            except Exception as e:
+                print(f"Failed to notify admin {admin_id}: {e}")
     
     finally:
         db.close()
