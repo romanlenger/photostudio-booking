@@ -1094,6 +1094,7 @@ async def confirm_payment_callback(update: Update, context):
                 text=query.message.text + f"\n\n❌ <b>Помилка:</b> {str(e)}",
                 parse_mode='HTML'
             )
+            pass
         except:
             pass
     finally:
