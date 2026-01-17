@@ -93,6 +93,67 @@ async def send_reschedule_notification(
         logging.error(f"Failed to send reschedule notification: {e}")
 
 
+async def send_booking_deleted_notification(
+    telegram_user_id: int,
+    client_name: str,
+    booking_date: date,
+    deleted_hours = None,
+    booking_hour: int = None,
+    is_full_cancellation: bool = False
+):
+    """Відправити повідомлення клієнту про видалення бронювання"""
+    BOT_TOKEN = os.getenv("BOT_TOKEN")
+    if not BOT_TOKEN:
+        return
+    
+    bot = Bot(token=BOT_TOKEN)
+    
+    if is_full_cancellation:
+        # Видалена вся група
+        hours_display = format_hours_display(deleted_hours)
+        message = f"""❌ <b>Ваше бронювання скасовано</b>
+
+👤 {client_name}
+
+📅 <b>Дата:</b> {booking_date.strftime('%d.%m.%Y')}
+🕐 <b>Час:</b> {hours_display}
+
+━━━━━━━━━━━━━━━━
+
+Ваше бронювання було скасовано адміністратором.
+
+Якщо у вас виникли питання, будь ласка, зв'яжіться з нами:
+📞 <b>Контакт:</b> @clique_admin
+
+Будемо раді бачити вас знову! 📸"""
+    else:
+        # Видалена одна година
+        message = f"""⚠️ <b>Зміна в бронюванні</b>
+
+👤 {client_name}
+
+📅 <b>Дата:</b> {booking_date.strftime('%d.%m.%Y')}
+🕐 <b>Скасована година:</b> {booking_hour}:00
+
+━━━━━━━━━━━━━━━━
+
+Одну годину вашого бронювання було скасовано адміністратором.
+
+Якщо у вас залишились інші години - вони залишаються активними.
+
+Якщо у вас виникли питання:
+📞 <b>Контакт:</b> @clique_admin"""
+    
+    try:
+        await bot.send_message(
+            chat_id=telegram_user_id,
+            text=message,
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logging.error(f"Failed to send deletion notification: {e}")        
+
+
 async def send_details_update_notification(
     telegram_user_id: int,
     client_name: str,
@@ -647,8 +708,9 @@ def get_admin_day_status(
     )
 
 @app.delete("/api/admin/bookings/{booking_id}")
-def delete_booking(
+async def delete_booking(
     booking_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_admin: dict = Depends(get_current_admin)
 ):
@@ -659,18 +721,36 @@ def delete_booking(
     if not booking:
         raise HTTPException(status_code=404, detail="Бронювання не знайдено")
     
+    # Зберегти дані для повідомлення
+    client = db.query(models.Client).filter(models.Client.id == booking.client_id).first()
+    booking_date = booking.booking_date
+    booking_hour = booking.booking_hour
+    telegram_user_id = booking.telegram_user_id
+    
     db.delete(booking)
     db.commit()
+    
+    # Відправити повідомлення клієнту
+    if telegram_user_id:
+        background_tasks.add_task(
+            send_booking_deleted_notification,
+            telegram_user_id=telegram_user_id,
+            client_name=client.name,
+            booking_date=booking_date,
+            booking_hour=booking_hour,
+            is_full_cancellation=False
+        )
     
     return {
         "message": "Бронювання видалено",
         "booking_id": booking_id,
-        "hour": booking.booking_hour
+        "hour": booking_hour
     }
 
 @app.delete("/api/admin/bookings/group/{booking_group_id}")
-def delete_booking_group(
+async def delete_booking_group(
     booking_group_id: str,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_admin: dict = Depends(get_current_admin)
 ):
@@ -683,12 +763,28 @@ def delete_booking_group(
     if not bookings:
         raise HTTPException(status_code=404, detail="Група бронювань не знайдена")
     
-    deleted_hours = [b.booking_hour for b in bookings]
+    # Зберегти дані для повідомлення
+    first_booking = bookings[0]
+    client = db.query(models.Client).filter(models.Client.id == first_booking.client_id).first()
+    booking_date = first_booking.booking_date
+    deleted_hours = sorted([b.booking_hour for b in bookings])
+    telegram_user_id = first_booking.telegram_user_id
     
     for booking in bookings:
         db.delete(booking)
     
     db.commit()
+    
+    # Відправити повідомлення клієнту
+    if telegram_user_id:
+        background_tasks.add_task(
+            send_booking_deleted_notification,
+            telegram_user_id=telegram_user_id,
+            client_name=client.name,
+            booking_date=booking_date,
+            deleted_hours=deleted_hours,
+            is_full_cancellation=True
+        )
     
     return {
         "message": "Вся група видалена",

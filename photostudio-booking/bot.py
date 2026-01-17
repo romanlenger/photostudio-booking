@@ -955,17 +955,45 @@ async def handle_photo(update: Update, context):
         # Use booking_group_id for callback if exists, otherwise booking_id
         callback_id = booking_group_id if booking_group_id else booking_id
         
-        keyboard = [
-            [
-                InlineKeyboardButton("✅ Підтвердити оплату", 
-                                    callback_data=f"confirm_pay_{callback_id}"),
-                InlineKeyboardButton("❌ Відхилити", 
-                                    callback_data=f"reject_pay_{callback_id}")
+        # Перевірити чи бронювання вже підтверджено
+        if first_booking.status == 'paid':
+            # Якщо вже підтверджено - БЕЗ кнопок
+            admin_message = f"""ℹ️ <b>Клієнт надіслав скріншот (бронювання вже підтверджено)</b>
+
+📋 Бронювання #{booking_id}
+👤 {client.name}
+📞 {client.phone}
+💬 {tg}
+
+📅 {first_booking.booking_date.strftime('%d.%m.%Y')}
+🕐 {hours_display} ({len(hours)} год)
+
+💰 <b>Сума:</b> {first_booking.total_price} грн
+
+✅ <b>Статус:</b> ОПЛАЧЕНО
+
+📸 Скріншот квитанції нижче ⬇️"""
+            
+            reply_markup = None  # БЕЗ кнопок
+            
+            # Повідомити клієнта що вже підтверджено
+            await update.message.reply_text(
+                "✅ Ваше бронювання вже підтверджено!",
+                reply_markup=get_main_keyboard()
+            )
+        else:
+            # Якщо ще не підтверджено - З кнопками
+            keyboard = [
+                [
+                    InlineKeyboardButton("✅ Підтвердити оплату", 
+                                        callback_data=f"confirm_pay_{callback_id}"),
+                    InlineKeyboardButton("❌ Відхилити", 
+                                        callback_data=f"reject_pay_{callback_id}")
+                ]
             ]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        admin_message = f"""💰 <b>Скріншот оплати отримано!</b>
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            admin_message = f"""💰 <b>Скріншот оплати отримано!</b>
 
 📋 Бронювання #{booking_id}
 👤 {client.name}
@@ -987,7 +1015,7 @@ async def handle_photo(update: Update, context):
                     chat_id=admin_id,
                     text=admin_message,
                     parse_mode='HTML',
-                    reply_markup=reply_markup
+                    reply_markup=reply_markup  # None якщо вже підтверджено
                 )
                 await context.bot.forward_message(
                     chat_id=admin_id,
