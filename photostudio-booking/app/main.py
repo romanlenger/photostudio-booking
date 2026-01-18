@@ -966,6 +966,22 @@ async def confirm_payment_from_admin(
             photographer_choice=booking.photographer_choice
         )
     
+    # НОВИЙ КОД - Відправити фотографу якщо студійний фотограф
+    if booking.photographer_choice == 'studio':
+        PHOTOGRAPHER_ID_STR = os.getenv("PHOTOGRAPHER_ID", "")
+        if PHOTOGRAPHER_ID_STR.strip():
+            PHOTOGRAPHER_ID = int(PHOTOGRAPHER_ID_STR)
+            background_tasks.add_task(
+                send_photographer_notification,
+                photographer_id=PHOTOGRAPHER_ID,
+                client_name=client.name,
+                client_phone=client.phone,
+                booking_date=booking.booking_date,
+                hours=hours,
+                total_price=booking.total_price,
+                booking=booking
+            )
+
     return {
         "message": "Оплату підтверджено",
         "booking_id": booking_id,
@@ -1022,6 +1038,69 @@ async def send_payment_confirmed_notification(
         )
     except Exception as e:
         logging.error(f"Failed to send payment confirmation: {e}")
+
+
+async def send_photographer_notification(
+    photographer_id: int,
+    client_name: str,
+    client_phone: str,
+    booking_date: date,
+    hours: list,
+    total_price: int,
+    booking: models.Booking
+):
+    """Відправити повідомлення фотографу про підтверджене бронювання"""
+    BOT_TOKEN = os.getenv("BOT_TOKEN")
+    if not BOT_TOKEN:
+        return
+    
+    bot = Bot(token=BOT_TOKEN)
+    
+    hours_display = format_hours_display(hours)
+    has_discount = len(hours) >= 3
+    
+    # Підготовка інформації про послуги
+    services_info = []
+    if booking.people_count:
+        services_info.append(f"👥 Людей: {booking.people_count}")
+    if booking.zone_choice:
+        zone_display = {"light": "🌞 Світла", "dark": "🌙 Темна", "both": "🌓 Обидві"}.get(booking.zone_choice, booking.zone_choice)
+        services_info.append(f"Зона: {zone_display}")
+    if booking.animals_count:
+        services_info.append(f"🐾 Тварин: {booking.animals_count}")
+    if booking.background_choice and booking.background_choice != 'none':
+        bg_display = {"white": "⚪ Білий", "black": "⚫ Чорний", "red": "🔴 Червоний"}.get(booking.background_choice, booking.background_choice)
+        services_info.append(f"🎨 Фон: {bg_display}")
+    
+    services_summary = "\n".join(services_info) if services_info else "Базові послуги"
+    discount_info = " (зі знижкою 10%)" if has_discount else ""
+    
+    message = f"""✅ <b>Оплата підтверджена!</b>
+
+📸 <b>Ваша фотосесія:</b>
+
+📅 Дата: {booking_date.strftime('%d.%m.%Y')}
+🕐 Час: {hours_display} ({len(hours)} год)
+
+👤 Клієнт: {client_name}
+📞 Телефон: {client_phone}
+
+📋 <b>Деталі:</b>
+{services_summary}
+
+💰 Оплату отримано і перевірено{discount_info}
+
+🎯 <b>Будьте готові!</b>
+Клієнт чекає на вас у студії в призначений час."""
+    
+    try:
+        await bot.send_message(
+            chat_id=photographer_id,
+            text=message,
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logging.error(f"Failed to send to photographer: {e}")
 
 
 @app.post("/api/monobank/webhook")
