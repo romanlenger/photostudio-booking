@@ -668,6 +668,17 @@
             background: linear-gradient(135deg, #EE5A6F 0%, #DC4D5F 100%);
         }
 
+        .btn-confirm-payment {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            font-weight: bold;
+        }
+
+        .btn-confirm-payment:hover {
+            background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
         /* Mobile Responsive Styles */
         @media screen and (max-width: 768px) {
             * {
@@ -1426,6 +1437,14 @@
                             📞 ${booking.client_phone}<br>
                             ${badges}
                         </div>
+                        ${booking.status === 'paid' ? 
+                            `<div style="padding: 10px; background: #e8f5e9; border-radius: 8px; margin: 5px 0; text-align: center; color: #2e7d32; font-weight: bold;">
+                                ✅ ОПЛАЧЕНО
+                            </div>` : 
+                            `<button class="btn btn-confirm-payment" onclick="confirmPaymentFromAdmin(${booking.booking_id}, '${booking.booking_group_id || ''}')">
+                                ✅ Підтвердити оплату
+                            </button>`
+                        }
                         <button class="btn btn-reschedule-hour" onclick="showRescheduleModal(${booking.booking_id}, '${booking.client_name.replace(/'/g, "\\'")}', ${booking.hour})">
                             📅 Перенести
                         </button>
@@ -1433,7 +1452,7 @@
                             ✏️ Деталі
                         </button>
                         <button class="btn btn-delete" onclick="deleteBooking(${booking.booking_id})">
-                            🗑️ Видалити годину
+                            🗑️ Видалити
                         </button>
                         ${booking.booking_group_id && booking.hours_in_group > 1 ? 
                             `<button class="btn btn-delete-group" onclick="deleteGroup('${booking.booking_group_id}')">
@@ -1886,6 +1905,43 @@
                 if (response.ok) {
                     showMessage('✅ Деталі оновлено! Клієнт отримав повідомлення.', 'success');
                     closeDetailsModal();
+                    setTimeout(() => {
+                        closeModal();
+                        loadCalendar();
+                        loadTodayBookings();
+                    }, 1500);
+                } else {
+                    const error = await response.json();
+                    showMessage(`❌ Помилка: ${error.detail}`, 'error');
+                }
+            } catch (error) {
+                showMessage('❌ Помилка з\'єднання', 'error');
+            }
+        }
+
+                // === ПІДТВЕРДЖЕННЯ ОПЛАТИ З АДМІН-ПАНЕЛІ ===
+
+        async function confirmPaymentFromAdmin(bookingId, bookingGroupId) {
+            if (!confirm('Підтвердити оплату цього бронювання?')) return;
+            
+            try {
+                // Визначити який ID використовувати (group або booking)
+                const paymentId = bookingGroupId || bookingId;
+                
+                const response = await fetch('/api/admin/bookings/confirm-payment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        booking_id: bookingId,
+                        booking_group_id: bookingGroupId || null
+                    })
+                });
+                
+                if (response.ok) {
+                    showMessage('✅ Оплату підтверджено! Клієнт отримав повідомлення.', 'success');
                     setTimeout(() => {
                         closeModal();
                         loadCalendar();

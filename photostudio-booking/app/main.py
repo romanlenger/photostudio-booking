@@ -673,7 +673,8 @@ def get_admin_day_status(
                 'photographer_choice': booking.photographer_choice,
                 'total_price': booking.total_price,
                 'hours_in_group': hours_in_group,
-                'has_discount': has_discount
+                'has_discount': has_discount,
+                'status': booking.status
             }
     
     # Створити список для всіх робочих годин
@@ -693,7 +694,8 @@ def get_admin_day_status(
                 photographer_choice=info['photographer_choice'],
                 total_price=info['total_price'],
                 hours_in_group=info['hours_in_group'],
-                has_discount=info['has_discount']
+                has_discount=info['has_discount'],
+                status=info['status']
             ))
         else:
             result_bookings.append(schemas.BookingDetailResponse(
@@ -916,6 +918,110 @@ async def update_booking_details(
         "booking_id": booking_id,
         "client_name": client.name  # ← ДОДАТИ ЦЕЙ РЯДОК
     }
+
+
+@app.post("/api/admin/bookings/confirm-payment")
+async def confirm_payment_from_admin(
+    payment_data: dict,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin)
+):
+    """Підтвердити оплату з адмін-панелі"""
+    
+    booking_id = payment_data.get('booking_id')
+    booking_group_id = payment_data.get('booking_group_id')
+    
+    booking = db.query(models.Booking).filter(models.Booking.id == booking_id).first()
+    
+    if not booking:
+        raise HTTPException(status_code=404, detail="Бронювання не знайдено")
+    
+    # Знайти всі бронювання в групі
+    if booking_group_id:
+        bookings = db.query(models.Booking).filter(
+            models.Booking.booking_group_id == booking_group_id
+        ).all()
+    else:
+        bookings = [booking]
+    
+    # Оновити статус всіх бронювань на 'paid'
+    for b in bookings:
+        b.status = 'paid'
+    
+    db.commit()
+    
+    # Відправити повідомлення клієнту
+    client = db.query(models.Client).filter(models.Client.id == booking.client_id).first()
+    hours = sorted([b.booking_hour for b in bookings])
+    
+    if booking.telegram_user_id:
+        background_tasks.add_task(
+            send_payment_confirmed_notification,
+            telegram_user_id=booking.telegram_user_id,
+            client_name=client.name,
+            booking_date=booking.booking_date,
+            hours=hours,
+            total_price=booking.total_price,
+            photographer_choice=booking.photographer_choice
+        )
+    
+    return {
+        "message": "Оплату підтверджено",
+        "booking_id": booking_id,
+        "status": "paid"
+    }
+
+
+async def send_payment_confirmed_notification(
+    telegram_user_id: int,
+    client_name: str,
+    booking_date: date,
+    hours: list,
+    total_price: int,
+    photographer_choice: str
+):
+    """Відправити повідомлення клієнту про підтвердження оплати"""
+    BOT_TOKEN = os.getenv("BOT_TOKEN")
+    if not BOT_TOKEN:
+        return
+    
+    bot = Bot(token=BOT_TOKEN)
+    
+    hours_display = format_hours_display(hours)
+    has_discount = len(hours) >= 3
+    
+    photographer_contact = ""
+    if photographer_choice == 'studio':
+        photographer_contact = "\n\n💬 <b>Зв'язатись з фотографом:</b> @lonkilin"
+    
+    message = f"""✅ <b>Оплату підтверджено!</b>
+
+Ваше бронювання успішно оплачено та підтверджено.
+
+📅 <b>Дата:</b> {booking_date.strftime('%d.%m.%Y')}
+🕐 <b>Час:</b> {hours_display} ({len(hours)} год)
+💰 <b>Сума:</b> {total_price} грн
+{"🎉 <b>Знижка 10% застосована!</b>" if has_discount else ""}
+
+━━━━━━━━━━━━━━━━
+
+📍 <b>Адреса студії:</b>
+м. Бровари, Київська область
+провулок Івана Сокура, 1
+
+📞 <b>Контакт:</b> @clique_admin{photographer_contact}
+
+Чекаємо на вас! 🎉"""
+    
+    try:
+        await bot.send_message(
+            chat_id=telegram_user_id,
+            text=message,
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logging.error(f"Failed to send payment confirmation: {e}")
 
 
 @app.post("/api/monobank/webhook")

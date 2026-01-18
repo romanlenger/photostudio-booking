@@ -125,11 +125,12 @@ class BookingDetailResponse(BaseModel):
     client_name: Optional[str] = None
     client_phone: Optional[str] = None
     booking_id: Optional[int] = None
-    booking_group_id: Optional[str] = None  # NEW
-    photographer_choice: Optional[str] = None  # NEW
-    total_price: Optional[int] = None  # NEW: Total price
-    hours_in_group: Optional[int] = None  # NEW: How many hours in this group
-    has_discount: Optional[bool] = None  # NEW: Whether 10% discount applied
+    booking_group_id: Optional[str] = None
+    photographer_choice: Optional[str] = None
+    total_price: Optional[int] = None
+    hours_in_group: Optional[int] = None
+    has_discount: Optional[bool] = None
+    status: Optional[str] = None
 
 class AdminDayStatusResponse(BaseModel):
     """Статус дня з деталями для адміна"""
