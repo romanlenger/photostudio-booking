@@ -39,7 +39,7 @@ STUDIO_RULES = os.getenv("STUDIO_RULES") or """📋 Правила фотост�
 
 ⚠️ При скасуванні <24 год - передоплата не повертається"""
 
-WEBSITE_URL = os.getenv("WEBSITE_URL", "http://192.168.88.26:8000")
+WEBSITE_URL = os.getenv("WEBSITE_URL", "https://clique-photostudio.com")
 INSTAGRAM_URL = os.getenv("INSTAGRAM_URL", "https://instagram.com/clique_studio")
 
 # Payment details
@@ -639,7 +639,7 @@ async def handle_pay_manual(query, context, booking_id):
                 )
             except Exception as e:
                 print(f"Failed to notify admin {admin_id}: {e}")
-    
+                pass
     finally:
         db.close()
 
@@ -1024,7 +1024,7 @@ async def handle_photo(update: Update, context):
                 )
             except Exception as e:
                 print(f"Failed to notify admin {admin_id}: {e}")
-        
+                pass
     finally:
         db.close()
 
@@ -1090,7 +1090,7 @@ async def confirm_payment_callback(update: Update, context):
                 )
             except Exception as e:
                 print(f"Could not edit admin message: {e}")
-        
+                pass
         # Notify client
         if first_booking.telegram_user_id:
             photographer_contact = ""
@@ -1149,7 +1149,7 @@ async def confirm_payment_callback(update: Update, context):
                 )
             except Exception as e:
                 print(f"Failed to notify photographer: {e}")
-        
+                pass
     except Exception as e:
         print(f"Error confirming payment: {e}")
         try:
@@ -1191,7 +1191,7 @@ async def reject_payment_callback(update: Update, context):
                 )
             except Exception as e:
                 print(f"Could not edit admin message: {e}")
-        
+                pass
         # Notify client
         if booking and booking.telegram_user_id:
             await context.bot.send_message(
