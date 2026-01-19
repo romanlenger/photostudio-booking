@@ -1075,6 +1075,19 @@ async def send_photographer_notification(
     services_summary = "\n".join(services_info) if services_info else "Базові послуги"
     discount_info = " (зі знижкою 10%)" if has_discount else ""
     
+    telegram_info = ""
+    if booking.telegram_user_id:
+        try:
+            # Спробувати отримати інфо про користувача
+            chat = await bot.get_chat(booking.telegram_user_id)
+            if chat.username:
+                telegram_info = f"\n💬 Telegram: @{chat.username}"
+            else:
+                telegram_info = f"\n💬 Telegram: <a href='tg://user?id={booking.telegram_user_id}'>Написати клієнту</a>"
+        except Exception as e:
+            # Якщо не вдалось отримати - просто посилання
+            telegram_info = f"\n💬 Telegram: <a href='tg://user?id={booking.telegram_user_id}'>Написати клієнту</a>"
+    
     message = f"""✅ <b>Оплата підтверджена!</b>
 
 📸 <b>Ваша фотосесія:</b>
@@ -1083,7 +1096,7 @@ async def send_photographer_notification(
 🕐 Час: {hours_display} ({len(hours)} год)
 
 👤 Клієнт: {client_name}
-📞 Телефон: {client_phone}
+📞 Телефон: {client_phone}{telegram_info}
 
 📋 <b>Деталі:</b>
 {services_summary}
