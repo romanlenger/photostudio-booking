@@ -1240,7 +1240,7 @@
             }
 
             try {
-                const response = await fetch('/api/auth/login', {  // ← Правильний endpoint
+                const response = await fetch('/api/admin/login', {  // ← Правильний endpoint
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password: password })
