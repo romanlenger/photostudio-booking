@@ -29,7 +29,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 def verify_password(plain_password: str) -> bool:
     """Перевірити пароль адміна"""
-    admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
+    admin_password = os.getenv("ADMIN_PASSWORD")
     return plain_password == admin_password
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
